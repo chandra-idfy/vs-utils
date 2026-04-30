@@ -1,0 +1,2225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Overlay Diff — pick a folder</title>
+<!-- js-yaml is the smallest reliable browser YAML parser; we load it from a CDN so this file
+     stays a single ~25 KB document. If you need to use this offline, save js-yaml.min.js next
+     to this file and change the src below. -->
+<script src="https://cdn.jsdelivr.net/npm/js-yaml@4.1.0/dist/js-yaml.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,800;1,9..144,400;1,9..144,600;1,9..144,800&family=JetBrains+Mono:ital,wght@0,400;0,500;0,700;1,400;1,500&display=swap');
+
+/* ──────────────────────────────────────────────────────────────
+   Overlay Diff — Editorial Field Journal
+   Palette: warm paper · ink · vermillion accent
+   Type:    Fraunces (display serif) + JetBrains Mono (body/data)
+   ────────────────────────────────────────────────────────────── */
+
+:root {
+  color-scheme: light dark;
+  /* Paper & ink */
+  --paper:        #f3ede0;
+  --paper-tint:   #ebe4d3;
+  --paper-deep:   #e3dac5;
+  --ink:          #1a1714;
+  --ink-soft:     #5a5246;
+  --ink-faint:    #948b78;
+  --rule:         #d4cab1;
+  --rule-soft:    #e3dac5;
+  /* Hot accent + secondary inks */
+  --vermillion:   #cc3a18;
+  --vermillion-deep: #a02d10;
+  --ochre:        #b88a2c;
+  --ochre-deep:   #6e4c10;
+  --moss:         #5a7a37;
+  /* Functional */
+  --diff-bg:      #f5e3b8;
+  --diff-fg:      #6e4c10;
+  --present:      var(--moss);
+  --absent:       #b8ad95;
+  --badge-bg:     rgba(204, 58, 24, 0.10);
+  --badge-fg:     var(--vermillion-deep);
+  --code-bg:      rgba(26, 23, 20, 0.06);
+  --shadow-soft:  0 1px 0 rgba(26,23,20,0.04), 0 12px 28px -16px rgba(26,23,20,0.18);
+  --shadow-pop:   0 18px 40px -12px rgba(26,23,20,0.32), 0 2px 6px rgba(26,23,20,0.08);
+  /* Aliases used by existing class names */
+  --bg:           var(--paper);
+  --fg:           var(--ink);
+  --muted:        var(--ink-soft);
+  --border:       var(--rule);
+  --row-alt:      var(--paper-tint);
+  --header-bg:    var(--paper-deep);
+  --accent:       var(--vermillion);
+}
+:root[data-theme="dark"] {
+  --paper:        #14110d;
+  --paper-tint:   #1c1812;
+  --paper-deep:   #221d15;
+  --ink:          #ece5d4;
+  --ink-soft:     #aaa18e;
+  --ink-faint:    #6a6253;
+  --rule:         #2e2820;
+  --rule-soft:    #221d15;
+  --vermillion:   #ff6b46;
+  --vermillion-deep: #ff5a30;
+  --ochre:        #e8b35a;
+  --ochre-deep:   #ffd87a;
+  --moss:         #93b56a;
+  --diff-bg:      rgba(232,179,90,0.16);
+  --diff-fg:      #ffd87a;
+  --absent:       #5d5446;
+  --badge-bg:     rgba(255, 107, 70, 0.14);
+  --badge-fg:     #ff8a6b;
+  --code-bg:      rgba(236, 229, 212, 0.08);
+  --shadow-soft:  0 1px 0 rgba(0,0,0,0.4), 0 12px 28px -16px rgba(0,0,0,0.6);
+  --shadow-pop:   0 18px 40px -12px rgba(0,0,0,0.7), 0 2px 6px rgba(0,0,0,0.4);
+  --accent:       var(--vermillion);
+}
+
+* { box-sizing: border-box; }
+
+html {
+  scroll-padding-top: 200px;
+  scroll-behavior: smooth;
+}
+
+/* ── Body, atmospheric background ─────────────────────────── */
+body {
+  margin: 0;
+  font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+  font-size: 13px;
+  font-feature-settings: "ss01", "cv02";
+  color: var(--ink);
+  line-height: 1.5;
+  background: var(--paper);
+  background-image:
+    radial-gradient(ellipse 800px 600px at 110% -10%, rgba(204,58,24,0.10), transparent 60%),
+    radial-gradient(ellipse 700px 500px at -10% 110%, rgba(184,138,44,0.10), transparent 60%);
+  background-attachment: fixed;
+  min-height: 100vh;
+}
+:root[data-theme="dark"] body {
+  background-image:
+    radial-gradient(ellipse 800px 600px at 110% -10%, rgba(255,107,70,0.10), transparent 60%),
+    radial-gradient(ellipse 700px 500px at -10% 110%, rgba(232,179,90,0.06), transparent 60%);
+}
+
+/* Grain overlay — adds tactile paper feel without obstructing reads */
+body::before {
+  content: "";
+  position: fixed; inset: 0;
+  pointer-events: none;
+  z-index: 1000;
+  opacity: 0.5;
+  mix-blend-mode: multiply;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='240' height='240'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.10 0 0 0 0 0.09 0 0 0 0 0.07 0 0 0 0.42 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+}
+:root[data-theme="dark"] body::before { mix-blend-mode: screen; opacity: 0.18; }
+
+::selection { background: rgba(204,58,24,0.22); color: var(--ink); }
+:root[data-theme="dark"] ::selection { background: rgba(255,107,70,0.32); color: #fff; }
+
+/* Refined scrollbar */
+* { scrollbar-width: thin; scrollbar-color: var(--rule) transparent; }
+*::-webkit-scrollbar { width: 10px; height: 10px; }
+*::-webkit-scrollbar-track { background: transparent; }
+*::-webkit-scrollbar-thumb { background: var(--rule); border-radius: 999px; border: 2px solid transparent; background-clip: content-box; }
+*::-webkit-scrollbar-thumb:hover { background: var(--ink-faint); background-clip: content-box; border: 2px solid transparent; }
+
+/* ── Topbar ───────────────────────────────────────────────── */
+header.topbar {
+  position: sticky; top: 0; z-index: 50;
+  padding: 22px 36px 12px;
+  background: rgba(243,237,224,0.85);
+  backdrop-filter: blur(14px) saturate(1.4);
+  -webkit-backdrop-filter: blur(14px) saturate(1.4);
+  border-bottom: 1px solid var(--rule);
+  animation: fadeDown 0.6s cubic-bezier(.2,.7,.2,1) both;
+}
+:root[data-theme="dark"] header.topbar { background: rgba(20,17,13,0.82); }
+
+/* Decorative double-rule beneath topbar */
+header.topbar::after {
+  content: "";
+  position: absolute; left: 36px; right: 36px; bottom: -4px;
+  height: 1px; background: var(--rule); opacity: 0.55;
+}
+
+header.topbar .brand {
+  display: flex; align-items: baseline; gap: 14px;
+  margin-bottom: 2px;
+}
+header.topbar .brand-mark {
+  font-family: "Fraunces", Georgia, serif;
+  font-style: italic;
+  font-weight: 400;
+  font-size: 28px;
+  color: var(--vermillion);
+  line-height: 1;
+  font-variation-settings: "opsz" 144, "SOFT" 100;
+  transform: translateY(2px);
+}
+header.topbar h1 {
+  font-family: "Fraunces", Georgia, serif;
+  font-weight: 600;
+  font-size: 30px;
+  letter-spacing: -0.02em;
+  margin: 0;
+  line-height: 1;
+  font-variation-settings: "opsz" 144;
+  color: var(--ink);
+}
+header.topbar h1 em {
+  font-style: italic;
+  font-weight: 400;
+  color: var(--vermillion);
+  font-variation-settings: "opsz" 144, "SOFT" 100;
+}
+header.topbar .meta {
+  color: var(--ink-soft);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-weight: 500;
+  margin-top: 4px;
+}
+header.topbar .meta code {
+  font-family: "JetBrains Mono", monospace;
+  text-transform: none;
+  letter-spacing: 0;
+  background: var(--code-bg);
+  padding: 1px 6px;
+  border-radius: 3px;
+  font-weight: 500;
+  color: var(--ink);
+}
+header.topbar .controls {
+  margin-top: 16px;
+  display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
+}
+header.topbar .controls[hidden] { display: none; }
+
+/* Inputs */
+header.topbar input[type=search] {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 12px;
+  color: var(--ink);
+  background: var(--paper);
+  border: 1px solid var(--rule);
+  border-radius: 2px;
+  padding: 7px 12px;
+  min-width: 280px;
+  transition: border-color .18s, box-shadow .18s, background .18s;
+}
+header.topbar input[type=search]::placeholder {
+  color: var(--ink-faint);
+  font-style: italic;
+}
+header.topbar input[type=search]:focus {
+  outline: none;
+  border-color: var(--vermillion);
+  box-shadow: 0 0 0 3px rgba(204,58,24,0.14);
+}
+:root[data-theme="dark"] header.topbar input[type=search]:focus {
+  box-shadow: 0 0 0 3px rgba(255,107,70,0.22);
+}
+
+header.topbar label {
+  display: inline-flex; gap: 7px; align-items: center;
+  cursor: pointer;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  user-select: none;
+}
+header.topbar label:hover { color: var(--ink); }
+header.topbar label input[type=checkbox] {
+  accent-color: var(--vermillion);
+  width: 13px; height: 13px;
+  margin: 0;
+}
+
+/* Buttons — ink on paper, hot invert on hover */
+header.topbar button,
+header.topbar .btn {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 7px 13px;
+  color: var(--ink);
+  background: transparent;
+  border: 1px solid var(--rule);
+  border-radius: 2px;
+  cursor: pointer;
+  transition: color .18s, background .18s, border-color .18s, transform .18s;
+  position: relative;
+}
+header.topbar button:hover,
+header.topbar .btn:hover {
+  color: var(--paper);
+  background: var(--ink);
+  border-color: var(--ink);
+  transform: translateY(-1px);
+}
+header.topbar button:active,
+header.topbar .btn:active { transform: translateY(0); }
+
+.btn-primary {
+  color: var(--paper) !important;
+  background: var(--vermillion) !important;
+  border-color: var(--vermillion) !important;
+}
+.btn-primary:hover {
+  background: var(--vermillion-deep) !important;
+  border-color: var(--vermillion-deep) !important;
+  color: var(--paper) !important;
+}
+
+header.topbar .legend {
+  color: var(--ink-soft);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+input[type=file] { display: none; }
+
+/* ── Project navigation (tabs) ───────────────────────────── */
+nav.projectnav {
+  position: sticky; z-index: 49;
+  display: flex; gap: 0;
+  padding: 0 36px;
+  background: rgba(243,237,224,0.85);
+  backdrop-filter: blur(14px) saturate(1.4);
+  -webkit-backdrop-filter: blur(14px) saturate(1.4);
+  border-bottom: 1px solid var(--rule);
+  overflow-x: auto; white-space: nowrap;
+  animation: fadeDown 0.7s cubic-bezier(.2,.7,.2,1) both;
+}
+:root[data-theme="dark"] nav.projectnav { background: rgba(20,17,13,0.82); }
+
+nav.projectnav .proj-tab {
+  appearance: none;
+  background: transparent;
+  border: 0;
+  padding: 12px 18px;
+  margin-bottom: -1px;
+  color: var(--ink-soft);
+  font-family: "JetBrains Mono", monospace;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+  display: inline-flex; align-items: center; gap: 8px;
+  position: relative;
+  transition: color .18s;
+}
+nav.projectnav .proj-tab::after {
+  content: "";
+  position: absolute;
+  left: 18px; right: 18px; bottom: 0;
+  height: 2px;
+  background: var(--vermillion);
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition: transform .28s cubic-bezier(.2,.7,.2,1);
+}
+nav.projectnav .proj-tab:hover { color: var(--ink); }
+nav.projectnav .proj-tab:hover::after { transform: scaleX(0.5); opacity: 0.5; }
+nav.projectnav .proj-tab.active {
+  color: var(--vermillion);
+  font-weight: 700;
+}
+nav.projectnav .proj-tab.active::after {
+  transform: scaleX(1);
+  opacity: 1;
+}
+
+.proj-tab-count {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0;
+  background: var(--badge-bg);
+  color: var(--badge-fg);
+  padding: 1px 7px;
+  border-radius: 999px;
+  min-width: 20px;
+  text-align: center;
+}
+
+/* ── Section navigation ──────────────────────────────────── */
+nav.sectionnav {
+  position: sticky; z-index: 48;
+  padding: 11px 36px;
+  background: rgba(243,237,224,0.92);
+  backdrop-filter: blur(14px) saturate(1.4);
+  -webkit-backdrop-filter: blur(14px) saturate(1.4);
+  border-bottom: 1px solid var(--rule);
+  display: flex; gap: 0; align-items: center;
+  animation: fadeDown 0.8s cubic-bezier(.2,.7,.2,1) both;
+}
+:root[data-theme="dark"] nav.sectionnav { background: rgba(20,17,13,0.92); }
+
+nav.sectionnav a {
+  margin-right: 24px;
+  color: var(--ink-soft);
+  text-decoration: none;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 11px;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  font-weight: 500;
+  position: relative;
+  padding: 2px 0;
+  transition: color .18s;
+}
+nav.sectionnav a::before {
+  content: "";
+  position: absolute; left: 0; right: 0; bottom: -2px;
+  height: 1px; background: var(--vermillion);
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition: transform .28s cubic-bezier(.2,.7,.2,1);
+}
+nav.sectionnav a:hover { color: var(--vermillion); }
+nav.sectionnav a:hover::before { transform: scaleX(1); }
+
+/* ── Project summary block ──────────────────────────────── */
+.proj-summary {
+  margin: 28px 0 8px;
+  padding: 14px 18px;
+  border: none;
+  border-left: 2px solid var(--vermillion);
+  background: linear-gradient(to right, rgba(204,58,24,0.04), transparent 60%);
+  font-size: 12px;
+  color: var(--ink-soft);
+  letter-spacing: 0.02em;
+  animation: fadeUp .5s cubic-bezier(.2,.7,.2,1) both;
+}
+.proj-summary strong {
+  color: var(--ink);
+  font-family: "Fraunces", Georgia, serif;
+  font-style: italic;
+  font-weight: 600;
+  font-size: 16px;
+  letter-spacing: -0.01em;
+  font-variation-settings: "opsz" 144;
+}
+.proj-summary code {
+  background: var(--code-bg);
+  padding: 1px 6px;
+  border-radius: 3px;
+  color: var(--ink);
+}
+
+.project-pane[hidden] { display: none; }
+.project-pane.active { animation: fadeUp .5s cubic-bezier(.2,.7,.2,1) both; }
+
+/* ── Main content ────────────────────────────────────────── */
+main {
+  padding: 8px 36px 120px;
+  max-width: 1600px;
+  margin: 0 auto;
+}
+
+/* ── Section headings — editorial chapter style ────────────── */
+h2 {
+  font-family: "Fraunces", Georgia, serif;
+  font-weight: 600;
+  font-style: italic;
+  font-size: 30px;
+  letter-spacing: -0.015em;
+  line-height: 1.15;
+  color: var(--ink);
+  margin: 56px 0 16px;
+  padding-bottom: 14px;
+  border-bottom: none;
+  position: relative;
+  font-variation-settings: "opsz" 144, "SOFT" 50;
+  animation: fadeUp .5s cubic-bezier(.2,.7,.2,1) both;
+}
+/* Decorative double rule under each chapter title */
+h2::after {
+  content: "";
+  position: absolute;
+  left: 0; bottom: 0;
+  width: 60px;
+  height: 2px;
+  background: var(--vermillion);
+}
+h2::before {
+  content: "";
+  position: absolute;
+  left: 0; bottom: -4px;
+  width: 60px;
+  height: 1px;
+  background: var(--rule);
+}
+/* Stylize the leading "1.", "2.", etc. that the JS emits */
+h2::first-letter {
+  color: var(--vermillion);
+  font-weight: 800;
+  font-style: italic;
+  font-size: 1.15em;
+}
+h2 .meta-count {
+  display: block;
+  font-family: "JetBrains Mono", monospace;
+  font-style: normal;
+  font-weight: 500;
+  font-size: 10px;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  margin: 6px 0 0;
+}
+
+.muted {
+  color: var(--ink-soft);
+  font-size: 12px;
+  font-style: italic;
+  line-height: 1.6;
+  margin: 8px 0 14px;
+}
+.footnote {
+  color: var(--ink-faint);
+  font-size: 11px;
+  font-style: italic;
+  margin: 6px 0 0;
+}
+
+/* ── Resource blocks (collapsibles) ──────────────────────── */
+details.resource-block {
+  margin: 14px 0 22px;
+  animation: fadeUp .5s cubic-bezier(.2,.7,.2,1) both;
+}
+details.resource-block:nth-of-type(1)  { animation-delay: 0.04s; }
+details.resource-block:nth-of-type(2)  { animation-delay: 0.08s; }
+details.resource-block:nth-of-type(3)  { animation-delay: 0.12s; }
+details.resource-block:nth-of-type(4)  { animation-delay: 0.16s; }
+details.resource-block:nth-of-type(5)  { animation-delay: 0.20s; }
+details.resource-block:nth-of-type(6)  { animation-delay: 0.24s; }
+details.resource-block:nth-of-type(7)  { animation-delay: 0.28s; }
+details.resource-block:nth-of-type(8)  { animation-delay: 0.32s; }
+
+details.resource-block > summary {
+  cursor: pointer;
+  list-style: none;
+  padding: 11px 14px 11px 14px;
+  background: var(--paper-tint);
+  border: 1px solid var(--rule);
+  border-radius: 2px;
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  transition: background .18s, border-color .18s, box-shadow .18s, transform .18s;
+  position: relative;
+}
+details.resource-block > summary:hover {
+  background: var(--paper-deep);
+  border-color: var(--ink-faint);
+  box-shadow: var(--shadow-soft);
+}
+details.resource-block[open] > summary {
+  border-color: var(--ink-faint);
+  background: var(--paper-deep);
+}
+details.resource-block > summary::-webkit-details-marker { display: none; }
+details.resource-block > summary::before {
+  content: "";
+  width: 0; height: 0;
+  border-style: solid;
+  border-width: 5px 0 5px 7px;
+  border-color: transparent transparent transparent var(--vermillion);
+  transition: transform 0.22s cubic-bezier(.2,.7,.2,1);
+  flex-shrink: 0;
+}
+details.resource-block[open] > summary::before {
+  transform: rotate(90deg);
+}
+
+/* Subtle reveal of inner content on open */
+details.resource-block[open] > *:not(summary) {
+  animation: fadeUp .35s cubic-bezier(.2,.7,.2,1) both;
+}
+
+details.exclusives { margin: 12px 0 0 16px; }
+details.exclusives > summary {
+  cursor: pointer;
+  color: var(--ink-soft);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  list-style: none;
+  padding: 4px 0;
+  transition: color .18s;
+}
+details.exclusives > summary::-webkit-details-marker { display: none; }
+details.exclusives > summary::before {
+  content: "+ ";
+  color: var(--vermillion);
+  font-weight: 700;
+}
+details.exclusives[open] > summary::before {
+  content: "− ";
+}
+details.exclusives > summary:hover { color: var(--ink); }
+details.exclusives ul {
+  font-size: 12px;
+  padding-left: 18px;
+  color: var(--ink-soft);
+  line-height: 1.7;
+}
+
+.resource-name {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 13px;
+  font-weight: 500;
+  background: transparent;
+  padding: 0;
+  color: var(--ink);
+  letter-spacing: -0.01em;
+}
+
+/* ── Badges ──────────────────────────────────────────────── */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 9px;
+  border-radius: 999px;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  background: var(--badge-bg);
+  color: var(--badge-fg);
+  white-space: nowrap;
+}
+.badge-muted {
+  background: transparent;
+  color: var(--ink-soft);
+  border: 1px solid var(--rule);
+}
+
+/* ── Tables — dense data, refined rules ─────────────────── */
+table.filterable {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  margin: 10px 0 4px;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 12px;
+  background: var(--paper);
+  border: 1px solid var(--rule);
+}
+table.filterable th, table.filterable td {
+  padding: 7px 11px;
+  text-align: left;
+  vertical-align: top;
+  white-space: nowrap;
+  border-right: 1px solid var(--rule-soft);
+  border-bottom: 1px solid var(--rule-soft);
+}
+table.filterable th:last-child, table.filterable td:last-child { border-right: none; }
+table.filterable tbody tr:last-child td { border-bottom: none; }
+
+table.filterable th {
+  background: var(--paper-deep);
+  position: sticky; top: 0; z-index: 5;
+  font-weight: 600;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  border-bottom: 1px solid var(--rule);
+  padding: 9px 11px;
+}
+table.filterable td:first-child, table.filterable th:first-child {
+  position: sticky; left: 0;
+  background: var(--paper); z-index: 4;
+  border-right: 1px solid var(--rule);
+}
+table.filterable th:first-child {
+  background: var(--paper-deep);
+  z-index: 6;
+  color: var(--vermillion);
+  font-weight: 700;
+}
+table.filterable tbody tr {
+  transition: background .12s;
+}
+table.filterable tbody tr:nth-child(even) td { background: var(--paper-tint); }
+table.filterable tbody tr:nth-child(even) td:first-child { background: var(--paper-tint); }
+table.filterable tbody tr:hover td { background: var(--paper-deep); }
+table.filterable tbody tr:hover td:first-child { background: var(--paper-deep); }
+
+.has-popup { position: relative; display: inline-block; vertical-align: top; }
+.cell-key, .cell-val {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 12px;
+}
+.cell-key:not(.has-popup) {
+  background: var(--code-bg);
+  padding: 1px 5px;
+  border-radius: 2px;
+}
+.cell-key.has-popup .cell-short {
+  background: var(--code-bg);
+  padding: 1px 5px;
+  border-radius: 2px;
+  text-decoration: underline dotted var(--ink-faint);
+  text-underline-offset: 3px;
+  transition: text-decoration-color .18s, background .18s;
+}
+.cell-key.has-popup { cursor: help; }
+.cell-key.has-popup:hover .cell-short {
+  text-decoration-color: var(--vermillion);
+  background: rgba(204,58,24,0.08);
+}
+.cell-val.has-popup .cell-short {
+  border-bottom: 1px dotted var(--ink-faint);
+  transition: border-bottom-color .18s;
+}
+.cell-val.has-popup { cursor: help; }
+.cell-short {
+  display: inline-block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: top;
+  user-select: text;
+}
+.cell-val.has-popup .cell-short { max-width: 9ch; }
+.cell-key.has-popup .cell-short { max-width: 25ch; }
+.cell-popup {
+  display: none;
+  position: absolute;
+  top: calc(100% + 4px); left: -2px;
+  z-index: 100;
+  background: var(--paper);
+  color: var(--ink);
+  border: 1px solid var(--vermillion);
+  border-radius: 2px;
+  padding: 8px 12px;
+  white-space: pre-wrap;
+  word-break: break-all;
+  max-width: 520px;
+  width: max-content;
+  box-shadow: var(--shadow-pop);
+  font-family: "JetBrains Mono", monospace;
+  font-size: 12px;
+  font-weight: 400;
+  user-select: text;
+  animation: popIn .15s cubic-bezier(.2,.7,.2,1) both;
+}
+.has-popup:hover .cell-popup { display: inline-block; }
+.has-popup:hover .cell-short { border-bottom-color: var(--vermillion); }
+
+/* Diff highlighting — ochre underscoring on cream */
+.diff-val {
+  background: var(--diff-bg);
+  color: var(--diff-fg);
+  padding: 1px 6px;
+  border-radius: 2px;
+  font-weight: 600;
+  box-shadow: inset 0 -2px 0 rgba(184,138,44,0.5);
+}
+:root[data-theme="dark"] .diff-val {
+  box-shadow: inset 0 -2px 0 rgba(232,179,90,0.45);
+}
+.absent {
+  color: var(--absent);
+  font-style: italic;
+}
+.present {
+  color: var(--present);
+  font-weight: 700;
+}
+
+code, .resource-name {
+  font-family: "JetBrains Mono", monospace;
+  background: var(--code-bg);
+  padding: 1px 6px;
+  border-radius: 2px;
+  font-size: 12px;
+}
+.resource-name { background: transparent; padding: 0; }
+
+/* ── Env (column) visibility picker ──────────────────────── */
+.env-picker { position: relative; display: inline-block; }
+.env-picker-menu {
+  position: absolute;
+  top: calc(100% + 8px); left: 0;
+  background: var(--paper);
+  border: 1px solid var(--ink-faint);
+  border-radius: 2px;
+  padding: 8px 6px;
+  z-index: 200;
+  display: flex; flex-direction: column; gap: 1px;
+  min-width: 260px;
+  box-shadow: var(--shadow-pop);
+  font-family: "JetBrains Mono", monospace;
+  font-size: 12px;
+  animation: popIn .18s cubic-bezier(.2,.7,.2,1) both;
+}
+.env-picker-menu[hidden] { display: none; }
+.env-picker-menu .env-picker-actions {
+  display: flex; gap: 6px;
+  padding: 4px 8px 8px;
+  border-bottom: 1px solid var(--rule);
+  margin-bottom: 6px;
+}
+.env-picker-menu .env-picker-actions button {
+  flex: 1;
+  padding: 5px 8px;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink);
+  background: transparent;
+  border: 1px solid var(--rule);
+  border-radius: 2px;
+  cursor: pointer;
+  transition: all .18s;
+}
+.env-picker-menu .env-picker-actions button:hover {
+  color: var(--paper);
+  background: var(--ink);
+  border-color: var(--ink);
+}
+.env-picker-menu label {
+  display: flex; align-items: center; gap: 10px;
+  padding: 5px 10px;
+  cursor: pointer;
+  border-radius: 2px;
+  font-size: 12px;
+  letter-spacing: 0.01em;
+  transition: background .12s, color .12s;
+}
+.env-picker-menu label:hover {
+  background: var(--paper-tint);
+  color: var(--vermillion);
+}
+.env-picker-menu label input[type=checkbox] {
+  accent-color: var(--vermillion);
+  margin: 0;
+}
+.env-picker-menu label.is-reference {
+  cursor: default;
+  color: var(--ink-faint);
+  font-style: italic;
+}
+.env-picker-menu label.is-reference:hover {
+  background: transparent;
+  color: var(--ink-faint);
+}
+.env-picker-menu .env-tag {
+  margin-left: auto;
+  font-size: 9px;
+  font-style: normal;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  color: var(--vermillion);
+  font-weight: 500;
+}
+
+/* ── Landing page ────────────────────────────────────────── */
+.landing {
+  max-width: 720px;
+  margin: 80px auto 60px;
+  padding: 0 36px;
+  text-align: left;
+  position: relative;
+  animation: fadeUp 0.7s cubic-bezier(.2,.7,.2,1) both;
+}
+
+/* Editorial issue mark */
+.landing::before {
+  content: "№ 01";
+  display: block;
+  font-family: "Fraunces", Georgia, serif;
+  font-style: italic;
+  font-size: 14px;
+  letter-spacing: 0.10em;
+  color: var(--vermillion);
+  margin-bottom: 18px;
+  font-variation-settings: "opsz" 144;
+  animation: fadeUp 0.5s cubic-bezier(.2,.7,.2,1) 0.1s both;
+}
+
+.landing h2 {
+  font-family: "Fraunces", Georgia, serif;
+  font-weight: 600;
+  font-size: 56px;
+  line-height: 1.05;
+  letter-spacing: -0.025em;
+  color: var(--ink);
+  margin: 0 0 24px;
+  padding: 0;
+  border: 0;
+  font-variation-settings: "opsz" 144;
+  animation: fadeUp 0.6s cubic-bezier(.2,.7,.2,1) 0.15s both;
+}
+.landing h2::before, .landing h2::after { display: none; }
+.landing h2::first-letter { color: inherit; font-size: inherit; font-weight: inherit; }
+.landing h2 em {
+  font-style: italic;
+  font-weight: 400;
+  color: var(--vermillion);
+  font-variation-settings: "opsz" 144, "SOFT" 100;
+}
+
+.landing p {
+  color: var(--ink-soft);
+  margin: 0 0 32px;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 13px;
+  line-height: 1.7;
+  max-width: 580px;
+  animation: fadeUp 0.6s cubic-bezier(.2,.7,.2,1) 0.25s both;
+}
+.landing p code {
+  background: var(--code-bg);
+  padding: 1px 6px;
+  border-radius: 2px;
+  color: var(--ink);
+  font-size: 12px;
+}
+
+.landing .pick-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 28px;
+  background: var(--vermillion);
+  color: var(--paper);
+  border-radius: 2px;
+  cursor: pointer;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  transition: background .22s, transform .22s, box-shadow .22s, padding .22s;
+  box-shadow: 0 1px 0 var(--vermillion-deep), 0 12px 28px -8px rgba(204,58,24,0.45);
+  animation: fadeUp 0.6s cubic-bezier(.2,.7,.2,1) 0.35s both;
+  position: relative;
+  overflow: hidden;
+}
+.landing .pick-btn::after {
+  content: "→";
+  font-family: "Fraunces", Georgia, serif;
+  font-size: 18px;
+  font-weight: 400;
+  letter-spacing: 0;
+  transition: transform .28s cubic-bezier(.2,.7,.2,1);
+}
+.landing .pick-btn:hover {
+  background: var(--vermillion-deep);
+  transform: translateY(-2px);
+  box-shadow: 0 1px 0 var(--vermillion-deep), 0 18px 38px -8px rgba(204,58,24,0.55);
+  padding-right: 36px;
+}
+.landing .pick-btn:hover::after { transform: translateX(6px); }
+.landing .pick-btn:active { transform: translateY(0); }
+
+.landing .hint {
+  font-size: 11px;
+  color: var(--ink-faint);
+  margin: 28px 0 0;
+  font-family: "JetBrains Mono", monospace;
+  font-style: italic;
+  line-height: 1.6;
+  animation: fadeUp 0.6s cubic-bezier(.2,.7,.2,1) 0.45s both;
+}
+.landing .hint:first-of-type { animation-delay: 0.45s; }
+.landing .hint:nth-of-type(2) { animation-delay: 0.55s; }
+.landing .hint code { font-size: 10px; }
+
+/* Decorative ornament floating in landing area */
+.landing-ornament {
+  position: absolute;
+  right: 36px;
+  top: 0;
+  width: 120px;
+  height: 120px;
+  pointer-events: none;
+  opacity: 0.32;
+  color: var(--vermillion);
+  animation: spinSlow 60s linear infinite;
+}
+
+/* ── Progress indicator ──────────────────────────────────── */
+#progress {
+  position: fixed; bottom: 22px; right: 22px;
+  background: var(--paper);
+  border: 1px solid var(--ink);
+  border-radius: 2px;
+  padding: 10px 16px;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink);
+  box-shadow: var(--shadow-pop);
+  display: none;
+  z-index: 500;
+}
+#progress.show { display: flex; align-items: center; gap: 10px; animation: popIn .25s cubic-bezier(.2,.7,.2,1) both; }
+#progress.show::before {
+  content: "";
+  width: 8px; height: 8px;
+  background: var(--vermillion);
+  border-radius: 50%;
+  animation: pulse 1.1s ease-in-out infinite;
+}
+
+/* ── Error banner ────────────────────────────────────────── */
+.error-banner {
+  margin: 36px 36px;
+  padding: 18px 22px;
+  border: 1px solid var(--vermillion);
+  border-left: 3px solid var(--vermillion);
+  border-radius: 2px;
+  color: var(--vermillion-deep);
+  background: rgba(204,58,24,0.06);
+  font-family: "JetBrains Mono", monospace;
+  font-size: 12px;
+  line-height: 1.6;
+  animation: fadeUp .5s cubic-bezier(.2,.7,.2,1) both;
+}
+:root[data-theme="dark"] .error-banner {
+  color: var(--vermillion);
+  background: rgba(255,107,70,0.08);
+}
+.error-banner strong {
+  display: block;
+  margin-bottom: 6px;
+  font-family: "Fraunces", Georgia, serif;
+  font-style: italic;
+  font-weight: 600;
+  font-size: 16px;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+  font-variation-settings: "opsz" 144;
+}
+
+/* ── Animations ──────────────────────────────────────────── */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes fadeDown {
+  from { opacity: 0; transform: translateY(-8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes popIn {
+  from { opacity: 0; transform: translateY(-4px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%      { opacity: 0.4; transform: scale(0.7); }
+}
+@keyframes spinSlow {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ── Responsive ──────────────────────────────────────────── */
+@media (max-width: 720px) {
+  header.topbar { padding: 18px 20px 10px; }
+  nav.projectnav, nav.sectionnav { padding-left: 20px; padding-right: 20px; }
+  main { padding: 8px 20px 80px; }
+  header.topbar h1 { font-size: 24px; }
+  header.topbar .brand-mark { font-size: 22px; }
+  h2 { font-size: 24px; margin-top: 40px; }
+  .landing { padding: 0 20px; margin-top: 60px; }
+  .landing h2 { font-size: 38px; }
+  .landing-ornament { display: none; }
+  .error-banner { margin: 20px; }
+}
+</style>
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">
+    <span class="brand-mark" aria-hidden="true">§</span>
+    <h1>Overlay <em>Diff</em></h1>
+  </div>
+  <div class="meta" id="header-meta">No folder selected.</div>
+  <div class="controls" id="controls" hidden>
+    <input type="search" id="search" placeholder="filter by key or name…  press /" autocomplete="off">
+    <label><input type="checkbox" id="diffs-only" checked> Diffs only</label>
+    <div class="env-picker">
+      <button id="env-picker-btn" type="button" hidden>Envs ▾</button>
+      <div class="env-picker-menu" id="env-picker-menu" hidden></div>
+    </div>
+    <button id="expand-all" type="button">Expand all</button>
+    <button id="collapse-all" type="button">Collapse all</button>
+    <button id="theme-toggle" type="button" aria-label="Toggle theme">☾ Dark</button>
+    <label class="btn" for="folder-input">Pick folder</label>
+    <button id="download-html" type="button" class="btn-primary" hidden>↓ Download</button>
+    <span class="legend"><span class="diff-val">highlighted</span> = differs from reference · <span class="absent">—</span> = absent</span>
+    <span class="legend" id="match-count"></span>
+  </div>
+</header>
+
+<input type="file" id="folder-input" webkitdirectory directory multiple>
+
+<main id="main">
+  <div class="landing" id="landing">
+    <svg class="landing-ornament" viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="0.5" aria-hidden="true">
+      <circle cx="50" cy="50" r="48"/>
+      <circle cx="50" cy="50" r="38"/>
+      <circle cx="50" cy="50" r="28" stroke-dasharray="2 3"/>
+      <line x1="2" y1="50" x2="98" y2="50"/>
+      <line x1="50" y1="2" x2="50" y2="98"/>
+      <line x1="14.6" y1="14.6" x2="85.4" y2="85.4" stroke-dasharray="1 2"/>
+      <line x1="85.4" y1="14.6" x2="14.6" y2="85.4" stroke-dasharray="1 2"/>
+      <text x="50" y="9" font-family="Fraunces, serif" font-style="italic" font-size="5" fill="currentColor" stroke="none" text-anchor="middle">N</text>
+      <text x="91" y="52" font-family="Fraunces, serif" font-style="italic" font-size="5" fill="currentColor" stroke="none" text-anchor="middle">E</text>
+      <text x="50" y="95" font-family="Fraunces, serif" font-style="italic" font-size="5" fill="currentColor" stroke="none" text-anchor="middle">S</text>
+      <text x="9" y="52" font-family="Fraunces, serif" font-style="italic" font-size="5" fill="currentColor" stroke="none" text-anchor="middle">W</text>
+    </svg>
+    <h2>Pick a Kustomize <em>repository</em>.</h2>
+    <p>Reads <code>kustomization.yaml</code>, <code>secrets.yaml</code>, and <code>patch.yaml</code> from each <code>overlays/&lt;env&gt;/</code> directory and renders a side-by-side diff against the reference overlay (<code>prod</code> by default).</p>
+    <label class="pick-btn" for="folder-input">Select folder</label>
+    <p class="hint">Everything happens locally in your browser — no upload, no network. The folder you pick is read once via the File API.</p>
+    <p class="hint">Expected layout: <code>&lt;repo&gt;/overlays/&lt;env&gt;/{kustomization.yaml,secrets.yaml,patch.yaml}</code> &nbsp;or one level deeper for multi-project parents.</p>
+  </div>
+</main>
+
+<div id="progress"></div>
+
+<script>
+"use strict";
+
+// ---------- constants ----------
+
+const URL_RE = /^(https?|wss?|grpc|grpcs):\/\/|\.(com|co|in|net|org|io|gov|edu|dev|app|cloud|local|internal|svc|cluster)(?=[/.\s:]|$)/i;
+
+const EXCLUDED_KEY_SUBSTRINGS   = ["MEDIA_CONSTRAINTS","ALLOWED_REDIRECTS","ORGANIZATION_UNIT_IDS_FOR_CRON","SDP_CONSTRAINTS"];
+const EXCLUDED_RESOURCE_SUBSTRINGS = ["federal","earlysalary","razorpay"];
+const EXCLUDED_OVERLAYS = new Set(["aries","cubvkycuat","bflvkycuatapp","equitas-pictor","hdfc","musca","staging"]);
+const IMAGE_PREFIXES_TO_STRIP = ["asia-south1-docker.pkg.dev/idfy-gitlab/idfy/","gcr.io/idfy-gitlab/"];
+
+const KEY_VISIBLE_CHARS = 24;
+const VAL_VISIBLE_CHARS = 8;
+
+const REFERENCE_DEFAULT = "prod";
+const RELEVANT_FILES = new Set(["kustomization.yaml","secrets.yaml","patch.yaml"]);
+
+// ---------- pure helpers ----------
+
+function isUrlish(value) {
+  if (value === null || value === undefined) return false;
+  const s = String(value).trim();
+  if (!s) return false;
+  return URL_RE.test(s);
+}
+function isExcludedKey(key) {
+  return EXCLUDED_KEY_SUBSTRINGS.some(s => key.includes(s));
+}
+function isExcludedResource(name) {
+  const n = (name || "").toLowerCase();
+  return EXCLUDED_RESOURCE_SUBSTRINGS.some(s => n.includes(s));
+}
+function shortImageName(name) {
+  for (const p of IMAGE_PREFIXES_TO_STRIP) if (name.startsWith(p)) return name.slice(p.length);
+  return name;
+}
+function sanitizeId(name) {
+  const cleaned = name.replace(/[^a-zA-Z0-9_-]+/g, "-").replace(/^-+|-+$/g, "");
+  return cleaned || "x";
+}
+function hesc(value) {
+  if (value === null || value === undefined) return "";
+  return String(value)
+    .replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")
+    .replace(/"/g,"&quot;").replace(/'/g,"&#39;");
+}
+
+// ---------- file reading ----------
+
+function readFileText(file) {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(r.result);
+    r.onerror = () => reject(r.error);
+    r.readAsText(file);
+  });
+}
+
+// Load a YAML doc. js-yaml's safe load throws on tab indentation etc; swallow
+// the error and return an empty object — matches the Python script's behaviour.
+function safeYamlLoad(text, filename) {
+  try { return jsyaml.load(text) || {}; }
+  catch (e) { console.warn("YAML parse failed in", filename, e.message); return {}; }
+}
+function safeYamlLoadAll(text, filename) {
+  try {
+    const docs = [];
+    jsyaml.loadAll(text, d => { if (d) docs.push(d); });
+    return docs;
+  } catch (e) {
+    console.warn("YAML parse failed in", filename, e.message);
+    return [];
+  }
+}
+
+// ---------- parsers ----------
+
+async function parseKustomization(file) {
+  const text = await readFileText(file);
+  const data = safeYamlLoad(text, file.webkitRelativePath);
+
+  const images = {}, imageNewName = {};
+  for (const img of data.images || []) {
+    const name = img.name || "";
+    const newName = img.newName;
+    const newTag = img.newTag !== undefined && img.newTag !== "" ? String(img.newTag) : "";
+    images[name] = newTag;
+    if (newName && newName !== name) imageNewName[name] = newName;
+  }
+
+  const configMaps = {};
+  for (const cm of data.configMapGenerator || []) {
+    const cmName = cm.name || "";
+    const literals = {};
+    for (const lit of cm.literals || []) {
+      const eq = lit.indexOf("=");
+      if (eq > 0) literals[lit.slice(0, eq)] = lit.slice(eq + 1);
+    }
+    if ((cm.files || []).length) literals.__files__ = cm.files.join(", ");
+    if (cmName) configMaps[cmName] = literals;
+  }
+
+  return { images, imageNewName, configMaps };
+}
+
+async function parseSecrets(file) {
+  const text = await readFileText(file);
+  const docs = safeYamlLoadAll(text, file.webkitRelativePath);
+  const secrets = {};
+  for (const doc of docs) {
+    const kind = doc.kind || "";
+    const name = (doc.metadata || {}).name || "";
+    if (!name) continue;
+    let keys = secrets[name];
+    if (!keys) { keys = new Set(); secrets[name] = keys; }
+    if (kind === "Secret") {
+      for (const k of Object.keys(doc.data || {})) keys.add(k);
+      for (const k of Object.keys(doc.stringData || {})) keys.add(k);
+    } else if (kind === "ExternalSecret") {
+      for (const d of (doc.spec || {}).data || []) {
+        const k = d.secretKey || d.name;
+        if (k) keys.add(k);
+      }
+    }
+  }
+  return secrets;
+}
+
+async function parsePatch(file) {
+  const text = await readFileText(file);
+  const docs = safeYamlLoadAll(text, file.webkitRelativePath);
+  const deps = {};
+  for (const doc of docs) {
+    if (doc.kind !== "Deployment") continue;
+    const name = (doc.metadata || {}).name || "";
+    if (!name) continue;
+    const info = { replicas: null, containers: {} };
+    const spec = doc.spec || {};
+    if ("replicas" in spec) info.replicas = spec.replicas;
+    const containers = ((spec.template || {}).spec || {}).containers || [];
+    for (const c of containers) {
+      const cname = c.name || "";
+      const res = c.resources || {};
+      info.containers[cname] = {
+        requestsCpu:    (res.requests || {}).cpu    ?? null,
+        requestsMemory: (res.requests || {}).memory ?? null,
+        limitsCpu:      (res.limits   || {}).cpu    ?? null,
+        limitsMemory:   (res.limits   || {}).memory ?? null,
+      };
+    }
+    deps[name] = info;
+  }
+  return deps;
+}
+
+// ---------- discovery: filelist -> projects -> overlays -> files ----------
+
+function classifyPath(relPath) {
+  // Accept .../overlays/<env>/<file> at any depth >= 1 segment before "overlays".
+  // Single-project picks: <picked>/overlays/<env>/<file>
+  // Multi-project picks:  <picked>/<project>/overlays/<env>/<file>
+  const parts = relPath.split("/");
+  const idx = parts.indexOf("overlays");
+  if (idx <= 0 || idx > parts.length - 3) return null;
+  const fileName = parts[parts.length - 1];
+  if (!RELEVANT_FILES.has(fileName)) return null;
+  // env is the segment right after "overlays"; file is final; everything between picked-folder
+  // and "overlays" forms the project name (typically just one segment).
+  const env = parts[idx + 1];
+  // Project: if "overlays" is at index 1 (single project), project = parts[0] (the picked folder).
+  // Otherwise the segment immediately before "overlays" is the project.
+  const projectName = idx === 1 ? parts[0] : parts[idx - 1];
+  return { projectName, env, fileName };
+}
+
+function discoverProjectsFromFileList(fileList) {
+  // -> Map<projectName, Map<env, {kustomization?, secrets?, patch?}>>
+  const projects = new Map();
+  for (const file of fileList) {
+    const cls = classifyPath(file.webkitRelativePath);
+    if (!cls) continue;
+    const { projectName, env, fileName } = cls;
+    if (!projects.has(projectName)) projects.set(projectName, new Map());
+    const proj = projects.get(projectName);
+    if (!proj.has(env)) proj.set(env, {});
+    const slot = fileName.replace(".yaml", "");
+    proj.get(env)[slot] = file;
+  }
+  return projects;
+}
+
+async function loadOverlay(envName, fileSlots) {
+  const data = { name: envName, images: {}, imageNewName: {}, configMaps: {}, secrets: {}, deployments: {} };
+  if (fileSlots.kustomization) {
+    const k = await parseKustomization(fileSlots.kustomization);
+    data.images = k.images;
+    data.imageNewName = k.imageNewName;
+    data.configMaps = k.configMaps;
+  }
+  if (fileSlots.secrets) data.secrets = await parseSecrets(fileSlots.secrets);
+  if (fileSlots.patch)   data.deployments = await parsePatch(fileSlots.patch);
+  return data;
+}
+
+async function loadProjects(projectsMap, options, onProgress) {
+  // projectsMap: Map<projectName, Map<env, fileSlots>>
+  const out = [];
+  let processed = 0;
+  const total = Array.from(projectsMap.values()).reduce((acc, envs) => acc + envs.size, 0);
+
+  for (const [projectName, envs] of projectsMap) {
+    if (!envs.has(options.reference)) {
+      console.warn(`Skipping ${projectName}: no '${options.reference}' overlay.`);
+      processed += envs.size;
+      onProgress && onProgress(processed, total);
+      continue;
+    }
+    let envNames;
+    if (options.envs && options.envs.length) {
+      envNames = options.envs.filter(e => envs.has(e));
+    } else {
+      envNames = Array.from(envs.keys())
+        .filter(e => e !== options.reference && !EXCLUDED_OVERLAYS.has(e))
+        .sort();
+    }
+
+    const overlays = [];
+    overlays.push(await loadOverlay(options.reference, envs.get(options.reference)));
+    processed++; onProgress && onProgress(processed, total);
+    for (const env of envNames) {
+      overlays.push(await loadOverlay(env, envs.get(env)));
+      processed++; onProgress && onProgress(processed, total);
+    }
+    out.push({ name: projectName, overlays, reference: options.reference });
+  }
+  return out;
+}
+
+// ---------- HTML rendering helpers ----------
+
+function htmlTruncatable(visible, kind = "val", full = null) {
+  const rawVisible = String(visible);
+  const rawFull = full !== null ? String(full) : rawVisible;
+  const maxChars = (kind === "val") ? VAL_VISIBLE_CHARS : KEY_VISIBLE_CHARS;
+  const needsTrunc = rawVisible.length > maxChars;
+  const needsPopup = needsTrunc || (full !== null && rawFull !== rawVisible);
+  const shortHtml = needsTrunc ? hesc(rawVisible.slice(0, maxChars)) + "…" : hesc(rawVisible);
+  if (!needsPopup) return `<span class="cell-${kind}">${shortHtml}</span>`;
+  return `<span class="has-popup cell-${kind}">`
+       + `<span class="cell-short">${shortHtml}</span>`
+       + `<span class="cell-popup">${hesc(rawFull)}</span>`
+       + `</span>`;
+}
+
+function htmlValue(value, diff = false) {
+  if (value === null || value === undefined || String(value) === "") return '<span class="absent">—</span>';
+  const inner = htmlTruncatable(String(value), "val");
+  return diff ? `<span class="diff-val">${inner}</span>` : inner;
+}
+
+// `columnEnvs[i]` is the env name (string) for column i, or null/undefined if
+// the column isn't tied to an overlay (e.g. the leading "Key" / "ConfigMap"
+// columns). Tagging columns with data-env lets a single CSS rule hide / show
+// every cell of an env across the whole document.
+function htmlTable(headers, rows, columnEnvs) {
+  if (!rows.length) return "";
+  function envAttr(i) {
+    const env = columnEnvs ? columnEnvs[i] : null;
+    return env ? ` data-env="${hesc(env)}"` : "";
+  }
+  const out = ['<table class="filterable">', "<thead><tr>"];
+  for (let i = 0; i < headers.length; i++) out.push(`<th${envAttr(i)}>${headers[i]}</th>`);
+  out.push("</tr></thead><tbody>");
+  for (const r of rows) {
+    const key  = hesc((r.key || "").toLowerCase());
+    const diff = r.diff ? "true" : "false";
+    out.push(`<tr data-key="${key}" data-diff="${diff}">`);
+    for (let i = 0; i < r.cells.length; i++) out.push(`<td${envAttr(i)}>${r.cells[i]}</td>`);
+    out.push("</tr>");
+  }
+  out.push("</tbody></table>");
+  return out.join("\n");
+}
+
+// ---------- sections ----------
+
+function sectionImagesHtml(ref, others, projectId) {
+  const suffix = projectId ? `-${projectId}` : "";
+  const allImages = new Set(Object.keys(ref.images));
+  for (const o of others) for (const k of Object.keys(o.images)) allImages.add(k);
+
+  const rows = [];
+  for (const img of [...allImages].sort()) {
+    const refTag = ref.images[img] ?? null;
+    const cells = [
+      `<span class="cell-key">${hesc(shortImageName(img))}</span>`,
+      htmlValue(refTag),
+    ];
+    let anyDiff = false;
+    for (const o of others) {
+      const t = (img in o.images) ? o.images[img] : null;
+      const differs = (t !== refTag) && !(t === null && refTag === null);
+      if (differs) anyDiff = true;
+      cells.push(htmlValue(t, differs));
+    }
+    rows.push({ key: img, diff: anyDiff, cells });
+  }
+  const headers = ["Image", hesc(ref.name)].concat(others.map(o => hesc(o.name)));
+  const columnEnvs = [null, ref.name].concat(others.map(o => o.name));
+  const diffCount = rows.filter(r => r.diff).length;
+  return `<section id="images${suffix}" data-section="images">`
+       + `<h2>1. Container Image Tag Diff <span class="meta-count">${diffCount}/${rows.length} diverge</span></h2>`
+       + htmlTable(headers, rows, columnEnvs)
+       + `</section>`;
+}
+
+function exclusivesHtml(allOverlays, getKeysSet) {
+  // Returns "exclusive to one overlay" bullet list HTML, or "" if nothing exclusive.
+  const items = [];
+  for (const o of allOverlays) {
+    const oKeys = new Set(getKeysSet(o));
+    const otherKeys = new Set();
+    for (const x of allOverlays) if (x !== o) for (const k of getKeysSet(x)) otherKeys.add(k);
+    const only = [...oKeys].filter(k => !otherKeys.has(k) && !isExcludedKey(k)).sort();
+    if (only.length) items.push(`<li><strong>only in <code>${hesc(o.name)}</code></strong>: ${only.map(k => `<code>${hesc(k)}</code>`).join(", ")}</li>`);
+  }
+  if (!items.length) return "";
+  return `<details class="exclusives"><summary>Keys exclusive to one overlay</summary><ul>${items.join("")}</ul></details>`;
+}
+
+function sectionConfigmapsHtml(ref, others, filterUrls, projectId) {
+  const suffix = projectId ? `-${projectId}` : "";
+  const allOverlays = [ref, ...others];
+
+  const cmNames = new Set(Object.keys(ref.configMaps));
+  for (const o of others) for (const k of Object.keys(o.configMaps)) cmNames.add(k);
+  const filteredCmNames = [...cmNames].filter(n => !isExcludedResource(n)).sort();
+
+  const parts = [`<section id="configs${suffix}" data-section="configs">`, "<h2>2. ConfigMap Diff</h2>"];
+  const notes = [];
+  if (filterUrls) {
+    notes.push("URL/hostname-shaped values are filtered (toggle the “URL filter” checkbox to keep them).");
+  }
+  notes.push("Excluded key substrings: " + EXCLUDED_KEY_SUBSTRINGS.map(s => `<code>${hesc(s)}</code>`).join(", "));
+  notes.push("Excluded resource name substrings: " + EXCLUDED_RESOURCE_SUBSTRINGS.map(s => `<code>${hesc(s)}</code>`).join(", "));
+  parts.push(`<p class="muted">${notes.join(" · ")}</p>`);
+
+  for (const cmName of filteredCmNames) {
+    const refCm = ref.configMaps[cmName] || {};
+    const allKeys = new Set(Object.keys(refCm));
+    for (const o of others) {
+      for (const k of Object.keys(o.configMaps[cmName] || {})) allKeys.add(k);
+    }
+    const presentIn = allOverlays.filter(o => cmName in o.configMaps).map(o => o.name);
+    const missingIn = allOverlays.filter(o => !(cmName in o.configMaps)).map(o => o.name);
+
+    const diffRows = [];
+    let urlFiltered = 0, keyFiltered = 0;
+    for (const k of [...allKeys].sort()) {
+      if (isExcludedKey(k)) { keyFiltered++; continue; }
+      const refV = refCm[k] ?? null;
+      const rowValues = [refV, ...others.map(o => (o.configMaps[cmName] || {})[k] ?? null)];
+      if (filterUrls && rowValues.some(isUrlish)) {
+        if (rowValues.slice(1).some(v => v !== refV)) urlFiltered++;
+        continue;
+      }
+      const cells = [htmlTruncatable(k, "key"), htmlValue(refV)];
+      let anyDiff = false;
+      for (const v of rowValues.slice(1)) {
+        const differs = v !== refV;
+        if (differs) anyDiff = true;
+        cells.push(htmlValue(v, differs));
+      }
+      if (anyDiff) diffRows.push({ key: `${cmName} ${k}`, diff: true, cells });
+    }
+
+    const badges = [`<span class="badge">${diffRows.length}/${allKeys.size} diverge</span>`];
+    if (missingIn.length) badges.push(`<span class="badge badge-muted">missing in ${missingIn.map(hesc).join(", ")}</span>`);
+
+    parts.push('<details open class="resource-block">');
+    parts.push(`<summary><code class="resource-name">${hesc(cmName)}</code>${badges.join("")}</summary>`);
+    if (diffRows.length) {
+      const headers = ["Key", hesc(ref.name)].concat(others.map(o => hesc(o.name)));
+      const columnEnvs = [null, ref.name].concat(others.map(o => o.name));
+      parts.push(htmlTable(headers, diffRows, columnEnvs));
+    } else {
+      parts.push('<p class="muted">No comparable keys after filtering.</p>');
+    }
+
+    const notes2 = [];
+    if (urlFiltered) notes2.push(`${urlFiltered} URL/hostname row(s) hidden`);
+    if (keyFiltered) notes2.push(`${keyFiltered} key(s) hidden by name filter`);
+    if (notes2.length) parts.push(`<p class="footnote">${notes2.join(" · ")}.</p>`);
+
+    parts.push(exclusivesHtml(allOverlays, o => Object.keys(o.configMaps[cmName] || {})));
+    parts.push("</details>");
+  }
+  parts.push("</section>");
+  return parts.join("\n");
+}
+
+function sectionSecretsHtml(ref, others, projectId) {
+  const suffix = projectId ? `-${projectId}` : "";
+  const allOverlays = [ref, ...others];
+  const secNames = new Set(Object.keys(ref.secrets));
+  for (const o of others) for (const k of Object.keys(o.secrets)) secNames.add(k);
+  const filtered = [...secNames].filter(n => !isExcludedResource(n)).sort();
+
+  const parts = [`<section id="secrets${suffix}" data-section="secrets">`, "<h2>3. Secret Key Diff</h2>"];
+  parts.push('<p class="muted">Values are sealed/external — only key presence is compared. Rows present in every environment are omitted.</p>');
+
+  for (const secName of filtered) {
+    const allKeys = new Set();
+    for (const o of allOverlays) for (const k of (o.secrets[secName] || new Set())) allKeys.add(k);
+    const rows = [];
+    for (const k of [...allKeys].sort()) {
+      const presence = allOverlays.map(o => (o.secrets[secName] || new Set()).has(k));
+      if (presence.every(Boolean)) continue;
+      const cells = [htmlTruncatable(k, "key")].concat(presence.map(p => p ? '<span class="present">✓</span>' : '<span class="absent">—</span>'));
+      rows.push({ key: k, diff: true, cells });
+    }
+    parts.push('<details open class="resource-block">');
+    parts.push(`<summary><code class="resource-name">${hesc(secName)}</code><span class="badge">${rows.length} differ</span></summary>`);
+    if (rows.length) {
+      const headers = ["Key"].concat(allOverlays.map(o => hesc(o.name)));
+      const columnEnvs = [null].concat(allOverlays.map(o => o.name));
+      parts.push(htmlTable(headers, rows, columnEnvs));
+    } else {
+      parts.push('<p class="muted">All keys present in every environment.</p>');
+    }
+    parts.push("</details>");
+  }
+  parts.push("</section>");
+  return parts.join("\n");
+}
+
+function resourceFields(c) {
+  return [
+    ["requests.cpu",    c.requestsCpu],
+    ["requests.memory", c.requestsMemory],
+    ["limits.cpu",      c.limitsCpu],
+    ["limits.memory",   c.limitsMemory],
+  ];
+}
+
+function sectionResourcesHtml(ref, others, projectId) {
+  const suffix = projectId ? `-${projectId}` : "";
+  const allOverlays = [ref, ...others];
+  const depNames = new Set(Object.keys(ref.deployments));
+  for (const o of others) for (const k of Object.keys(o.deployments)) depNames.add(k);
+  const sortedDeps = [...depNames].sort();
+
+  const parts = [`<section id="resources${suffix}" data-section="resources">`, "<h2>4. Deployment Resources</h2>"];
+  parts.push('<p class="muted">Values reflect what each overlay\'s <code>patch.yaml</code> overrides. <span class="absent">—</span> means not overridden in that overlay; the effective value comes from the base or an HPA.</p>');
+
+  // Replicas
+  const replicaRows = [];
+  for (const d of sortedDeps) {
+    const refR = (ref.deployments[d] || {}).replicas ?? null;
+    const cells = [htmlTruncatable(d, "key"), htmlValue(refR)];
+    let anyDiff = false;
+    for (const o of others) {
+      const r = (o.deployments[d] || {}).replicas ?? null;
+      const differs = r !== refR;
+      if (differs) anyDiff = true;
+      cells.push(htmlValue(r, differs));
+    }
+    replicaRows.push({ key: d, diff: anyDiff, cells });
+  }
+  parts.push('<details open class="resource-block"><summary><strong>Replicas</strong></summary>');
+  parts.push(htmlTable(
+    ["Deployment", hesc(ref.name)].concat(others.map(o => hesc(o.name))),
+    replicaRows,
+    [null, ref.name].concat(others.map(o => o.name))
+  ));
+  parts.push("</details>");
+
+  // CPU / memory
+  const resRows = [];
+  for (const d of sortedDeps) {
+    const refDep = ref.deployments[d] || { containers: {} };
+    const allContainers = new Set(Object.keys(refDep.containers || {}));
+    for (const o of others) for (const c of Object.keys((o.deployments[d] || { containers: {} }).containers || {})) allContainers.add(c);
+    for (const cname of [...allContainers].sort()) {
+      const refC = (refDep.containers || {})[cname] || {};
+      for (const [fname, refV] of resourceFields(refC)) {
+        const othersV = others.map(o => {
+          const oc = ((o.deployments[d] || { containers: {} }).containers || {})[cname] || {};
+          return Object.fromEntries(resourceFields(oc))[fname] ?? null;
+        });
+        if (refV === null && othersV.every(v => v === null)) continue;
+        const cells = [htmlTruncatable(d, "key"), hesc(fname), htmlValue(refV)];
+        let anyDiff = false;
+        for (const v of othersV) {
+          const differs = v !== refV;
+          if (differs) anyDiff = true;
+          cells.push(htmlValue(v, differs));
+        }
+        resRows.push({ key: `${d} ${fname}`, diff: anyDiff, cells });
+      }
+    }
+  }
+  parts.push('<details open class="resource-block"><summary><strong>CPU / memory</strong></summary>');
+  parts.push(htmlTable(
+    ["Deployment", "Field", hesc(ref.name)].concat(others.map(o => hesc(o.name))),
+    resRows,
+    [null, null, ref.name].concat(others.map(o => o.name))
+  ));
+  parts.push("</details>");
+  parts.push("</section>");
+  return parts.join("\n");
+}
+
+function sectionHiddenHtml(ref, others, filterUrls, projectId) {
+  const suffix = projectId ? `-${projectId}` : "";
+  const allOverlays = [ref, ...others];
+  const cmNames = new Set(Object.keys(ref.configMaps));
+  for (const o of others) for (const k of Object.keys(o.configMaps)) cmNames.add(k);
+  const excludedResources = [...cmNames].filter(isExcludedResource).sort();
+  const visibleResources  = [...cmNames].filter(n => !isExcludedResource(n)).sort();
+
+  const headers = ["ConfigMap", "Key", hesc(ref.name)].concat(others.map(o => hesc(o.name)));
+  const columnEnvs = [null, null, ref.name].concat(others.map(o => o.name));
+
+  function makeRow(cmName, k) {
+    const refV = (ref.configMaps[cmName] || {})[k] ?? null;
+    const cells = [
+      `<span class="cell-key">${hesc(cmName)}</span>`,
+      htmlTruncatable(k, "key"),
+      htmlValue(refV),
+    ];
+    let anyDiff = false;
+    for (const o of others) {
+      const v = (o.configMaps[cmName] || {})[k] ?? null;
+      const differs = v !== refV;
+      if (differs) anyDiff = true;
+      cells.push(htmlValue(v, differs));
+    }
+    return { key: `${cmName} ${k}`, diff: anyDiff, cells };
+  }
+
+  const urlRows = [], nameRows = [];
+  for (const cmName of visibleResources) {
+    const refCm = ref.configMaps[cmName] || {};
+    const allKeys = new Set(Object.keys(refCm));
+    for (const o of others) for (const k of Object.keys(o.configMaps[cmName] || {})) allKeys.add(k);
+    for (const k of [...allKeys].sort()) {
+      const refV = refCm[k] ?? null;
+      const rowValues = [refV, ...others.map(o => (o.configMaps[cmName] || {})[k] ?? null)];
+      if (isExcludedKey(k))                         nameRows.push(makeRow(cmName, k));
+      else if (filterUrls && rowValues.some(isUrlish)) urlRows.push(makeRow(cmName, k));
+    }
+  }
+
+  const parts = [`<section id="hidden${suffix}" data-section="hidden">`];
+  parts.push(`<h2>5. Hidden / Filtered ConfigMap Entries <span class="meta-count">${urlRows.length} URL · ${nameRows.length} blob · ${excludedResources.length} resource(s)</span></h2>`);
+  parts.push('<p class="muted">Everything here was excluded from §2. Use this tab to spot-check what\'s being filtered.</p>');
+
+  // 5a. URL-shaped
+  parts.push(`<details open class="resource-block"><summary><strong>URL / hostname-shaped rows</strong> <span class="badge">${urlRows.length}</span></summary>`);
+  if (!filterUrls) {
+    parts.push('<p class="muted">URL filter is currently <strong>off</strong>; these rows are already in the main view.</p>');
+  } else if (urlRows.length) {
+    parts.push('<p class="muted">Filtered out of the main ConfigMap diff because values look like URLs / hostnames.</p>');
+    parts.push(htmlTable(headers, urlRows, columnEnvs));
+  } else {
+    parts.push('<p class="muted">No URL/hostname-shaped rows were filtered.</p>');
+  }
+  parts.push("</details>");
+
+  // 5b. Name-blacklisted
+  parts.push(`<details open class="resource-block"><summary><strong>Long-blob keys (name filter)</strong> <span class="badge">${nameRows.length}</span></summary>`);
+  parts.push(`<p class="muted">Keys whose name contains: ${EXCLUDED_KEY_SUBSTRINGS.map(s => `<code>${hesc(s)}</code>`).join(", ")}.</p>`);
+  if (nameRows.length) parts.push(htmlTable(headers, nameRows, columnEnvs));
+  else                 parts.push('<p class="muted">No keys matched.</p>');
+  parts.push("</details>");
+
+  // 5c. Excluded resources
+  parts.push(`<details open class="resource-block"><summary><strong>Excluded ConfigMaps (resource-name filter)</strong> <span class="badge">${excludedResources.length}</span></summary>`);
+  parts.push(`<p class="muted">ConfigMaps whose name matches: ${EXCLUDED_RESOURCE_SUBSTRINGS.map(s => `<code>${hesc(s)}</code>`).join(", ")}.</p>`);
+  if (excludedResources.length) {
+    for (const cmName of excludedResources) {
+      const refCm = ref.configMaps[cmName] || {};
+      const allKeys = new Set(Object.keys(refCm));
+      for (const o of others) for (const k of Object.keys(o.configMaps[cmName] || {})) allKeys.add(k);
+      const rows = [];
+      for (const k of [...allKeys].sort()) {
+        if (isExcludedKey(k)) continue;
+        rows.push(makeRow(cmName, k));
+      }
+      const presentIn = allOverlays.filter(o => cmName in o.configMaps).map(o => o.name);
+      parts.push(`<details class="resource-block" style="margin-left:14px"><summary><code class="resource-name">${hesc(cmName)}</code> <span class="badge">${rows.length} key(s)</span> <span class="badge badge-muted">present in ${presentIn.map(hesc).join(", ")}</span></summary>`);
+      if (rows.length) parts.push(htmlTable(headers, rows, columnEnvs));
+      else             parts.push('<p class="muted">No keys.</p>');
+      parts.push("</details>");
+    }
+  } else {
+    parts.push('<p class="muted">No ConfigMaps matched the resource-name filter.</p>');
+  }
+  parts.push("</details>");
+  parts.push("</section>");
+  return parts.join("\n");
+}
+
+// ---------- top-level renderer ----------
+
+function renderProjects(projects, options) {
+  const projectIds = projects.map(p => sanitizeId(p.name));
+  const tabs = [], panes = [];
+  projects.forEach((p, i) => {
+    const refName = p.reference;
+    const ref = p.overlays.find(o => o.name === refName);
+    const others = p.overlays.filter(o => o.name !== refName);
+    const projId = projectIds[i];
+    const isActive = (i === 0);
+
+    const sections = [
+      sectionImagesHtml(ref, others, projId),
+      sectionConfigmapsHtml(ref, others, options.filterUrls, projId),
+      sectionSecretsHtml(ref, others, projId),
+      sectionResourcesHtml(ref, others, projId),
+      sectionHiddenHtml(ref, others, options.filterUrls, projId),
+    ];
+    const summary =
+      `<div class="proj-summary"><strong>${hesc(p.name)}</strong>` +
+      ` &nbsp;·&nbsp; reference <code>${hesc(refName)}</code>` +
+      ` &nbsp;·&nbsp; compared ${others.length ? others.map(o => `<code>${hesc(o.name)}</code>`).join(", ") : "<em>none</em>"}` +
+      `</div>`;
+    panes.push(
+      `<div class="project-pane${isActive ? " active" : ""}" data-proj="${projId}"${isActive ? "" : " hidden"}>${summary}${sections.join("\n")}</div>`
+    );
+    tabs.push(
+      `<button class="proj-tab${isActive ? " active" : ""}" data-proj="${projId}" type="button">${hesc(p.name)} <span class="proj-tab-count">${others.length + 1}</span></button>`
+    );
+  });
+
+  const showProjTabs = projects.length > 1;
+  const projectNavHtml = showProjTabs ? `<nav class="projectnav">${tabs.join("")}</nav>` : "";
+  const sectionNavHtml =
+    `<nav class="sectionnav">` +
+    `<a class="sec-link" data-section="images" href="#images">Images</a>` +
+    `<a class="sec-link" data-section="configs" href="#configs">ConfigMaps</a>` +
+    `<a class="sec-link" data-section="secrets" href="#secrets">Secrets</a>` +
+    `<a class="sec-link" data-section="resources" href="#resources">Resources</a>` +
+    `<a class="sec-link" data-section="hidden" href="#hidden">Hidden</a>` +
+    `</nav>`;
+
+  return projectNavHtml + sectionNavHtml + panes.join("\n");
+}
+
+// ---------- env (column) visibility picker ----------
+
+function collectEnvNames(projects) {
+  // All unique env names across all projects, plus the canonical reference.
+  const all = new Set();
+  let reference = null;
+  for (const p of projects) {
+    if (!reference) reference = p.reference;
+    for (const o of p.overlays) all.add(o.name);
+  }
+  return { all: [...all], reference };
+}
+
+function applyEnvVisibility(menu) {
+  // Single <style> rule hides every cell tagged with a `data-env` of an env
+  // whose checkbox is unchecked. The header / first-column "key" cells aren't
+  // tagged so they always stay visible.
+  let styleEl = document.getElementById("env-overrides");
+  if (!styleEl) {
+    styleEl = document.createElement("style");
+    styleEl.id = "env-overrides";
+    document.head.appendChild(styleEl);
+  }
+  const hidden = [...menu.querySelectorAll("input[type=checkbox][data-env]")]
+    .filter(cb => !cb.checked && !cb.disabled)
+    .map(cb => cb.dataset.env);
+  styleEl.textContent = hidden.length
+    ? hidden.map(e => `[data-env="${cssEscape(e)}"]`).join(",") + " { display: none; }"
+    : "";
+  // Update the picker button label.
+  const btn = document.getElementById("env-picker-btn");
+  if (btn) {
+    const total = menu.querySelectorAll("input[type=checkbox][data-env]").length;
+    const visible = total - hidden.length;
+    btn.textContent = `Envs (${visible}/${total}) ▾`;
+  }
+}
+
+function cssEscape(s) {
+  // Modern browsers ship CSS.escape; if it's missing, fall back to a minimal
+  // version that handles the chars that show up in env names (letters, digits,
+  // dash, dot, underscore — already CSS-safe — plus anything weird gets escaped).
+  if (window.CSS && CSS.escape) return CSS.escape(s);
+  return s.replace(/[^a-zA-Z0-9_-]/g, ch => "\\" + ch);
+}
+
+function buildEnvPicker(projects) {
+  const { all, reference } = collectEnvNames(projects);
+  const btn = document.getElementById("env-picker-btn");
+  const menu = document.getElementById("env-picker-menu");
+  menu.innerHTML = "";
+
+  // Reference + comparison envs, sorted with reference always first.
+  const ordered = [reference, ...all.filter(e => e !== reference).sort()];
+
+  // Bulk-action row.
+  const actions = document.createElement("div");
+  actions.className = "env-picker-actions";
+  const showAllBtn = document.createElement("button"); showAllBtn.type = "button"; showAllBtn.textContent = "Show all";
+  const hideAllBtn = document.createElement("button"); hideAllBtn.type = "button"; hideAllBtn.textContent = "Hide all (except reference)";
+  actions.append(showAllBtn, hideAllBtn);
+  menu.appendChild(actions);
+
+  for (const env of ordered) {
+    const label = document.createElement("label");
+    const cb = document.createElement("input");
+    cb.type = "checkbox";
+    cb.dataset.env = env;
+    cb.checked = true;
+    if (env === reference) {
+      cb.disabled = true;
+      label.classList.add("is-reference");
+      label.title = "Reference column — always shown.";
+    }
+    cb.addEventListener("change", () => applyEnvVisibility(menu));
+    label.appendChild(cb);
+    label.append(" " + env);
+    if (env === reference) {
+      const tag = document.createElement("span");
+      tag.className = "env-tag";
+      tag.textContent = "reference";
+      label.appendChild(tag);
+    }
+    menu.appendChild(label);
+  }
+
+  showAllBtn.addEventListener("click", () => {
+    menu.querySelectorAll("input[type=checkbox][data-env]:not(:disabled)").forEach(cb => cb.checked = true);
+    applyEnvVisibility(menu);
+  });
+  hideAllBtn.addEventListener("click", () => {
+    menu.querySelectorAll("input[type=checkbox][data-env]:not(:disabled)").forEach(cb => cb.checked = false);
+    applyEnvVisibility(menu);
+  });
+
+  // Open / close behaviour.
+  btn.hidden = false;
+  btn.onclick = (e) => { e.stopPropagation(); menu.hidden = !menu.hidden; };
+  document.addEventListener("click", (e) => {
+    if (!menu.contains(e.target) && e.target !== btn) menu.hidden = true;
+  });
+
+  applyEnvVisibility(menu);
+}
+
+// ---------- in-page interactivity (filter, tabs, theme, sticky offsets) ----------
+
+function setUpInteractivity() {
+  const search = document.getElementById("search");
+  const diffsOnly = document.getElementById("diffs-only");
+  const expandAll = document.getElementById("expand-all");
+  const collapseAll = document.getElementById("collapse-all");
+  const themeBtn = document.getElementById("theme-toggle");
+  const matchCount = document.getElementById("match-count");
+  const root = document.documentElement;
+  const topbar = document.querySelector("header.topbar");
+  const THEME_KEY = "overlay-diff-theme";
+
+  function applyTheme(t) {
+    root.setAttribute("data-theme", t);
+    themeBtn.textContent = t === "dark" ? "☀ Light" : "☾ Dark";
+  }
+  function initialTheme() {
+    const saved = localStorage.getItem(THEME_KEY);
+    if (saved === "light" || saved === "dark") return saved;
+    return window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+  }
+  applyTheme(initialTheme());
+  themeBtn.addEventListener("click", () => {
+    const next = root.getAttribute("data-theme") === "dark" ? "light" : "dark";
+    localStorage.setItem(THEME_KEY, next);
+    applyTheme(next);
+  });
+
+  function recomputeOffsets() {
+    const projectNav = document.querySelector("nav.projectnav");
+    const sectionNav = document.querySelector("nav.sectionnav");
+    const topH = topbar ? topbar.offsetHeight : 0;
+    const projH = (projectNav && projectNav.offsetParent) ? projectNav.offsetHeight : 0;
+    if (projectNav) projectNav.style.top = topH + "px";
+    if (sectionNav) sectionNav.style.top = (topH + projH) + "px";
+    const total = topH + projH + (sectionNav ? sectionNav.offsetHeight : 0);
+    document.querySelectorAll("table.filterable th").forEach(th => { th.style.top = total + "px"; });
+    // Make anchor jumps (#configs-foo etc.) land below the sticky navbars
+    // instead of behind them. Padded by 8px so the heading isn't flush against
+    // the last sticky bar.
+    document.documentElement.style.scrollPaddingTop = (total + 8) + "px";
+  }
+  window.addEventListener("resize", recomputeOffsets);
+
+  function applyFilter() {
+    const q = (search.value || "").trim().toLowerCase();
+    const dOnly = diffsOnly.checked;
+    let visible = 0, hidden = 0;
+    const activePane = document.querySelector(".project-pane.active") || document;
+    activePane.querySelectorAll("table.filterable tbody tr").forEach(tr => {
+      const key = tr.dataset.key || "";
+      const isDiff = tr.dataset.diff === "true";
+      const matchSearch = !q || key.includes(q);
+      const matchDiff = !dOnly || isDiff;
+      const show = matchSearch && matchDiff;
+      tr.style.display = show ? "" : "none";
+      show ? visible++ : hidden++;
+    });
+    matchCount.textContent = visible + " visible · " + hidden + " hidden";
+  }
+  search.addEventListener("input", applyFilter);
+  diffsOnly.addEventListener("change", applyFilter);
+
+  function activeDetails() {
+    const activePane = document.querySelector(".project-pane.active") || document;
+    return activePane.querySelectorAll("details.resource-block");
+  }
+  expandAll.addEventListener("click", () => activeDetails().forEach(d => d.open = true));
+  collapseAll.addEventListener("click", () => activeDetails().forEach(d => d.open = false));
+
+  document.addEventListener("keydown", e => {
+    if (e.key === "/" && document.activeElement !== search) {
+      e.preventDefault();
+      search.focus(); search.select();
+    }
+  });
+
+  // Project tabs
+  function setActiveProject(proj) {
+    // In single-project mode the projectnav (and its tabs) are suppressed, so
+    // fall back to the rendered panes for the candidate project list — that's
+    // what holds the project IDs the section links must target.
+    const tabs  = Array.from(document.querySelectorAll(".proj-tab"));
+    const panes = Array.from(document.querySelectorAll(".project-pane"));
+    const candidates = tabs.length ? tabs.map(t => t.dataset.proj) : panes.map(p => p.dataset.proj);
+    if (!proj || !candidates.includes(proj)) proj = candidates[0];
+    if (!proj) return;
+    tabs.forEach(t => t.classList.toggle("active", t.dataset.proj === proj));
+    panes.forEach(p => {
+      const isActive = p.dataset.proj === proj;
+      p.hidden = !isActive;
+      p.classList.toggle("active", isActive);
+    });
+    document.querySelectorAll(".sec-link").forEach(a => {
+      a.href = "#" + a.dataset.section + "-" + proj;
+    });
+    applyFilter();
+  }
+  document.addEventListener("click", e => {
+    const tab = e.target.closest(".proj-tab");
+    if (!tab) return;
+    setActiveProject(tab.dataset.proj);
+    history.replaceState(null, "", "#" + (location.hash.match(/^#(\w+)-/)?.[1] || "images") + "-" + tab.dataset.proj);
+  });
+
+  // Section nav: compute the target Y manually and call window.scrollTo.
+  // scrollIntoView short-circuits when it thinks the element is already in
+  // view (it doesn't account for our sticky-chrome overlap), so we bypass it.
+  function stickyOffset(){
+    const t = document.querySelector("header.topbar");
+    const p = document.querySelector("nav.projectnav");
+    const s = document.querySelector("nav.sectionnav");
+    return (t ? t.offsetHeight : 0)
+         + (p && p.offsetParent ? p.offsetHeight : 0)
+         + (s ? s.offsetHeight : 0);
+  }
+  document.addEventListener("click", e => {
+    const link = e.target.closest("a.sec-link");
+    if (!link) return;
+    e.preventDefault();
+    const href = link.getAttribute("href") || "";
+    const target = document.getElementById(href.replace(/^#/, ""));
+    if (!target) return;
+    const top = window.pageYOffset + target.getBoundingClientRect().top - stickyOffset() - 8;
+    window.scrollTo({ top: Math.max(0, top), behavior: "smooth" });
+    history.replaceState(null, "", href);
+  }, true);  // capture phase: run before any other handler can change layout
+
+  return { applyFilter, recomputeOffsets, setActiveProject };
+}
+
+// ---------- folder pick → render flow ----------
+
+const interactivity = setUpInteractivity();
+
+const folderInput   = document.getElementById("folder-input");
+const main          = document.getElementById("main");
+const headerMeta    = document.getElementById("header-meta");
+const controls      = document.getElementById("controls");
+const downloadBtn   = document.getElementById("download-html");
+const progressEl    = document.getElementById("progress");
+
+let lastReportHtml = null;
+
+folderInput.addEventListener("change", async (e) => {
+  const fileList = Array.from(e.target.files || []);
+  if (!fileList.length) return;
+  await renderFromFiles(fileList);
+});
+
+async function renderFromFiles(fileList) {
+  main.innerHTML = "";
+  controls.hidden = true;
+  showProgress("Scanning files…");
+
+  // 1. Discover layout
+  const projectsMap = discoverProjectsFromFileList(fileList);
+  if (!projectsMap.size) {
+    showError(
+      "No overlays detected",
+      "The folder you picked doesn't appear to contain a Kustomize <code>overlays/&lt;env&gt;/</code> layout. " +
+      "Expected one of:<br><br>" +
+      "<code>&lt;picked&gt;/overlays/&lt;env&gt;/{kustomization.yaml,secrets.yaml,patch.yaml}</code><br>" +
+      "<code>&lt;picked&gt;/&lt;project&gt;/overlays/&lt;env&gt;/{kustomization.yaml,secrets.yaml,patch.yaml}</code>"
+    );
+    return;
+  }
+
+  // 2. Load each overlay
+  const options = { reference: REFERENCE_DEFAULT, envs: null, filterUrls: true };
+  const projects = await loadProjects(projectsMap, options, (done, total) => {
+    showProgress(`Reading overlays… ${done}/${total}`);
+  });
+
+  if (!projects.length) {
+    showError(
+      "No '" + options.reference + "' overlay",
+      "Found projects but none of them have a <code>" + hesc(options.reference) + "</code> overlay to use as the reference. Override the reference name by editing <code>REFERENCE_DEFAULT</code> at the top of the script."
+    );
+    return;
+  }
+
+  // 3. Render
+  showProgress("Rendering report…");
+  const reportHtml = renderProjects(projects, options);
+  main.innerHTML = reportHtml;
+  controls.hidden = false;
+  hideProgress();
+
+  headerMeta.innerHTML = projects.length === 1
+    ? `<code>${hesc(projects[0].name)}</code> · reference <code>${hesc(projects[0].reference)}</code>`
+    : `${projects.length} projects · reference <code>${hesc(options.reference)}</code>`;
+
+  lastReportHtml = exportableHtml(projects, reportHtml);
+  downloadBtn.hidden = false;
+
+  buildEnvPicker(projects);
+  interactivity.recomputeOffsets();
+  // Honour ?#<section>-<project> on first render.
+  const m = location.hash.match(/^#(\w+)-(.+)$/);
+  interactivity.setActiveProject(m ? m[2] : null);
+  interactivity.applyFilter();
+  // Re-measure once fonts have settled.
+  requestAnimationFrame(interactivity.recomputeOffsets);
+}
+
+function showProgress(msg) { progressEl.textContent = msg; progressEl.classList.add("show"); }
+function hideProgress() { progressEl.classList.remove("show"); }
+
+function showError(title, msgHtml) {
+  hideProgress();
+  main.innerHTML = `<div class="error-banner"><strong>${hesc(title)}</strong>${msgHtml}</div>`;
+}
+
+// ---------- offline export of the rendered report ----------
+
+function exportableHtml(projects, bodyHtml) {
+  // Build a self-contained HTML containing the rendered DOM + the same CSS + a
+  // small viewer JS subset (interactive controls work, but folder-pick is gone).
+  const css = document.querySelector("style").textContent;
+  const projectIds = projects.map(p => sanitizeId(p.name));
+  // Build the env-picker menu inline so the export includes it without the
+  // build step. Reference first, then the rest sorted.
+  const allEnvs = new Set();
+  for (const p of projects) for (const o of p.overlays) allEnvs.add(o.name);
+  const refName = projects[0].reference;
+  const orderedEnvs = [refName, ...[...allEnvs].filter(e => e !== refName).sort()];
+  const envMenuHtml =
+    `<div class="env-picker-actions">` +
+    `<button type="button" id="env-show-all">Show all</button>` +
+    `<button type="button" id="env-hide-all">Hide all (except reference)</button>` +
+    `</div>` +
+    orderedEnvs.map(env => {
+      const isRef = env === refName;
+      return `<label${isRef ? ' class="is-reference" title="Reference column — always shown."' : ""}>` +
+             `<input type="checkbox" data-env="${hesc(env)}" checked${isRef ? " disabled" : ""}>` +
+             ` ${hesc(env)}${isRef ? '<span class="env-tag">reference</span>' : ""}</label>`;
+    }).join("");
+
+  const headerHtml = `
+<header class="topbar">
+  <div class="brand">
+    <span class="brand-mark" aria-hidden="true">§</span>
+    <h1>Overlay <em>Diff</em></h1>
+  </div>
+  <div class="meta">${projects.length === 1
+    ? `<code>${hesc(projects[0].name)}</code> · reference <code>${hesc(projects[0].reference)}</code>`
+    : `${projects.length} projects · reference <code>${hesc(projects[0].reference)}</code>`}</div>
+  <div class="controls">
+    <input type="search" id="search" placeholder="filter by key or name…  press /" autocomplete="off">
+    <label><input type="checkbox" id="diffs-only" checked> Diffs only</label>
+    <div class="env-picker">
+      <button id="env-picker-btn" type="button">Envs (${orderedEnvs.length}/${orderedEnvs.length}) ▾</button>
+      <div class="env-picker-menu" id="env-picker-menu" hidden>${envMenuHtml}</div>
+    </div>
+    <button id="expand-all" type="button">Expand all</button>
+    <button id="collapse-all" type="button">Collapse all</button>
+    <button id="theme-toggle" type="button">☾ Dark</button>
+    <span class="legend"><span class="diff-val">highlighted</span> = differs from reference · <span class="absent">—</span> = absent</span>
+    <span class="legend" id="match-count"></span>
+  </div>
+</header>`;
+  const exportJs = `
+(function(){
+  const search=document.getElementById('search'),diffsOnly=document.getElementById('diffs-only'),
+        expandAll=document.getElementById('expand-all'),collapseAll=document.getElementById('collapse-all'),
+        themeBtn=document.getElementById('theme-toggle'),matchCount=document.getElementById('match-count'),
+        root=document.documentElement,topbar=document.querySelector('header.topbar'),THEME_KEY='overlay-diff-theme';
+  function applyTheme(t){root.setAttribute('data-theme',t);themeBtn.textContent=t==='dark'?'☀ Light':'☾ Dark';}
+  applyTheme(localStorage.getItem(THEME_KEY) || (matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'));
+  themeBtn.addEventListener('click',()=>{const n=root.getAttribute('data-theme')==='dark'?'light':'dark';localStorage.setItem(THEME_KEY,n);applyTheme(n);});
+  function recomputeOffsets(){
+    const pn=document.querySelector('nav.projectnav'),sn=document.querySelector('nav.sectionnav');
+    const tH=topbar.offsetHeight, pH=(pn&&pn.offsetParent)?pn.offsetHeight:0;
+    if(pn)pn.style.top=tH+'px';if(sn)sn.style.top=(tH+pH)+'px';
+    const total=tH+pH+(sn?sn.offsetHeight:0);
+    document.querySelectorAll('table.filterable th').forEach(th=>th.style.top=total+'px');
+    document.documentElement.style.scrollPaddingTop=(total+8)+'px';
+  }
+  window.addEventListener('resize',recomputeOffsets);
+  function applyFilter(){
+    const q=(search.value||'').trim().toLowerCase(),d=diffsOnly.checked;
+    let v=0,h=0;const ap=document.querySelector('.project-pane.active')||document;
+    ap.querySelectorAll('table.filterable tbody tr').forEach(tr=>{
+      const k=tr.dataset.key||'',isD=tr.dataset.diff==='true';
+      const show=(!q||k.includes(q))&&(!d||isD);tr.style.display=show?'':'none';show?v++:h++;
+    });
+    matchCount.textContent=v+' visible · '+h+' hidden';
+  }
+  search.addEventListener('input',applyFilter);diffsOnly.addEventListener('change',applyFilter);
+  function activeDetails(){return (document.querySelector('.project-pane.active')||document).querySelectorAll('details.resource-block');}
+  expandAll.addEventListener('click',()=>activeDetails().forEach(d=>d.open=true));
+  collapseAll.addEventListener('click',()=>activeDetails().forEach(d=>d.open=false));
+  document.addEventListener('keydown',e=>{if(e.key==='/'&&document.activeElement!==search){e.preventDefault();search.focus();search.select();}});
+  function setActive(p){const tabs=[...document.querySelectorAll('.proj-tab')],panes=[...document.querySelectorAll('.project-pane')];
+    const cand=tabs.length?tabs.map(t=>t.dataset.proj):panes.map(x=>x.dataset.proj);
+    if(!p||!cand.includes(p))p=cand[0];if(!p)return;
+    tabs.forEach(t=>t.classList.toggle('active',t.dataset.proj===p));
+    panes.forEach(x=>{const a=x.dataset.proj===p;x.hidden=!a;x.classList.toggle('active',a);});
+    document.querySelectorAll('.sec-link').forEach(a=>{a.href='#'+a.dataset.section+'-'+p;});applyFilter();}
+  document.addEventListener('click',e=>{const t=e.target.closest('.proj-tab');if(!t)return;setActive(t.dataset.proj);
+    history.replaceState(null,'','#'+(location.hash.match(/^#(\\w+)-/)?.[1]||'images')+'-'+t.dataset.proj);});
+  function stickyOff(){const t=document.querySelector('header.topbar'),p=document.querySelector('nav.projectnav'),s=document.querySelector('nav.sectionnav');
+    return (t?t.offsetHeight:0)+(p&&p.offsetParent?p.offsetHeight:0)+(s?s.offsetHeight:0);}
+  document.addEventListener('click',e=>{const l=e.target.closest('a.sec-link');if(!l)return;e.preventDefault();
+    const h=l.getAttribute('href')||'';const t=document.getElementById(h.replace(/^#/,''));if(!t)return;
+    const top=window.pageYOffset+t.getBoundingClientRect().top-stickyOff()-8;
+    window.scrollTo({top:Math.max(0,top),behavior:'smooth'});history.replaceState(null,'',h);},true);
+  // Env (column) visibility picker.
+  const envBtn=document.getElementById('env-picker-btn'),envMenu=document.getElementById('env-picker-menu');
+  function cssEsc(s){return (window.CSS&&CSS.escape)?CSS.escape(s):s.replace(/[^a-zA-Z0-9_-]/g,c=>'\\\\'+c);}
+  function applyEnvVis(){
+    let st=document.getElementById('env-overrides');
+    if(!st){st=document.createElement('style');st.id='env-overrides';document.head.appendChild(st);}
+    const hidden=[...envMenu.querySelectorAll('input[type=checkbox][data-env]')].filter(cb=>!cb.checked&&!cb.disabled).map(cb=>cb.dataset.env);
+    st.textContent=hidden.length?hidden.map(e=>'[data-env="'+cssEsc(e)+'"]').join(',')+' { display: none; }':'';
+    const total=envMenu.querySelectorAll('input[type=checkbox][data-env]').length;
+    envBtn.textContent='Envs ('+(total-hidden.length)+'/'+total+') ▾';
+  }
+  if(envBtn&&envMenu){
+    envBtn.addEventListener('click',e=>{e.stopPropagation();envMenu.hidden=!envMenu.hidden;});
+    document.addEventListener('click',e=>{if(!envMenu.contains(e.target)&&e.target!==envBtn)envMenu.hidden=true;});
+    envMenu.querySelectorAll('input[type=checkbox][data-env]').forEach(cb=>cb.addEventListener('change',applyEnvVis));
+    document.getElementById('env-show-all').addEventListener('click',()=>{envMenu.querySelectorAll('input[type=checkbox][data-env]:not(:disabled)').forEach(cb=>cb.checked=true);applyEnvVis();});
+    document.getElementById('env-hide-all').addEventListener('click',()=>{envMenu.querySelectorAll('input[type=checkbox][data-env]:not(:disabled)').forEach(cb=>cb.checked=false);applyEnvVis();});
+    applyEnvVis();
+  }
+  const m=location.hash.match(/^#(\\w+)-(.+)$/);setActive(m?m[2]:null);applyFilter();recomputeOffsets();requestAnimationFrame(recomputeOffsets);
+})();`;
+  return `<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Overlay Diff — ${hesc(projects.map(p=>p.name).join(", "))}</title>
+<style>${css}</style></head>
+<body>${headerHtml}<main>${bodyHtml}</main>
+<script>${exportJs}<\/script></body></html>`;
+}
+
+downloadBtn.addEventListener("click", () => {
+  if (!lastReportHtml) return;
+  const blob = new Blob([lastReportHtml], { type: "text/html" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  const stamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
+  a.download = `overlay-diff-${stamp}.html`;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+});
+
+// Surface unhandled errors so they're not silent.
+window.addEventListener("error", e => {
+  if (!main.querySelector(".error-banner")) {
+    showError("Unexpected error", `<code>${hesc(e.message)}</code><br><span class="muted">See browser console for details.</span>`);
+  }
+});
+</script>
+</body>
+</html>

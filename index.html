@@ -1,0 +1,297 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>vs-utils — tools</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#FAFAF8;
+    --ink:#1E2938;
+    --ink-muted:#4F5C6B;
+    --ink-faint:#7C8794;
+    --rule:rgba(30,41,56,0.16);
+    --rule-strong:rgba(30,41,56,0.32);
+    --primary:#006666;
+    --tint-primary:rgba(0,102,102,0.08);
+    --tint-primary-2:rgba(0,102,102,0.16);
+    --accent:#CC3A18;
+    --font-display:'Space Mono', ui-monospace, Menlo, monospace;
+    --font-body:'JetBrains Mono', 'Space Mono', ui-monospace, Menlo, monospace;
+  }
+
+  *{box-sizing:border-box;margin:0;padding:0}
+
+  html,body{height:100%}
+
+  body{
+    font-family:var(--font-body);
+    color:var(--ink);
+    background:var(--bg);
+    background-image:
+      radial-gradient(1200px 600px at 10% -10%, var(--tint-primary), transparent 60%),
+      radial-gradient(900px 500px at 110% 10%, rgba(204,58,24,0.06), transparent 60%);
+    background-attachment:fixed;
+    font-size:14px;
+    line-height:1.55;
+    -webkit-font-smoothing:antialiased;
+    display:flex;
+    flex-direction:column;
+    min-height:100vh;
+  }
+
+  header.topbar{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:18px 28px;
+    border-bottom:1px solid var(--rule);
+    background:rgba(250,250,248,0.72);
+    backdrop-filter:saturate(140%) blur(6px);
+    position:sticky;
+    top:0;
+    z-index:5;
+  }
+
+  .brand{
+    font-family:var(--font-display);
+    font-weight:700;
+    font-size:15px;
+    letter-spacing:-0.01em;
+    display:flex;
+    align-items:center;
+    gap:10px;
+  }
+  .brand .dot{
+    width:8px;height:8px;border-radius:50%;
+    background:var(--primary);
+    box-shadow:0 0 0 3px var(--tint-primary);
+  }
+  .brand em{
+    color:var(--primary);
+    font-style:normal;
+  }
+
+  .meta{
+    color:var(--ink-faint);
+    font-size:12px;
+  }
+
+  main{
+    max-width:980px;
+    width:100%;
+    margin:0 auto;
+    padding:56px 28px 40px;
+    flex:1 0 auto;
+  }
+
+  .hero{
+    margin-bottom:40px;
+  }
+  .hero .eyebrow{
+    font-family:var(--font-display);
+    font-size:12px;
+    text-transform:uppercase;
+    letter-spacing:0.18em;
+    color:var(--primary);
+    margin-bottom:10px;
+  }
+  .hero h1{
+    font-family:var(--font-display);
+    font-weight:700;
+    font-size:34px;
+    line-height:1.15;
+    letter-spacing:-0.02em;
+    margin-bottom:12px;
+  }
+  .hero h1 em{
+    font-style:italic;
+    color:var(--primary);
+  }
+  .hero p{
+    color:var(--ink-muted);
+    max-width:62ch;
+  }
+
+  .grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fit, minmax(320px, 1fr));
+    gap:18px;
+  }
+
+  a.card{
+    display:flex;
+    flex-direction:column;
+    gap:14px;
+    padding:22px 22px 20px;
+    border:1px solid var(--rule);
+    border-radius:6px;
+    background:#fff;
+    text-decoration:none;
+    color:inherit;
+    position:relative;
+    transition:border-color .15s ease, transform .15s ease, box-shadow .15s ease;
+  }
+  a.card:hover{
+    border-color:var(--rule-strong);
+    transform:translateY(-1px);
+    box-shadow:0 6px 22px -14px rgba(30,41,56,0.35);
+  }
+  a.card:focus-visible{
+    outline:2px solid var(--primary);
+    outline-offset:2px;
+  }
+
+  .card .row{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:12px;
+  }
+
+  .card .index{
+    font-family:var(--font-display);
+    font-size:11px;
+    color:var(--ink-faint);
+    letter-spacing:0.16em;
+    text-transform:uppercase;
+  }
+
+  .card .arrow{
+    width:26px;height:26px;
+    display:flex;align-items:center;justify-content:center;
+    border:1px solid var(--rule);
+    border-radius:50%;
+    color:var(--ink-muted);
+    transition:background .15s ease, color .15s ease, border-color .15s ease;
+  }
+  a.card:hover .arrow{
+    background:var(--primary);
+    border-color:var(--primary);
+    color:#fff;
+  }
+
+  .card h2{
+    font-family:var(--font-display);
+    font-weight:700;
+    font-size:20px;
+    letter-spacing:-0.01em;
+  }
+  .card h2 em{
+    font-style:italic;
+    color:var(--primary);
+  }
+
+  .card p{
+    color:var(--ink-muted);
+    font-size:13.5px;
+  }
+
+  .card .file{
+    font-size:11.5px;
+    color:var(--ink-faint);
+    border-top:1px dashed var(--rule);
+    padding-top:10px;
+    display:flex;
+    align-items:center;
+    gap:8px;
+  }
+  .card .file::before{
+    content:"";
+    width:6px;height:6px;
+    background:var(--primary);
+    border-radius:1px;
+    opacity:0.7;
+  }
+
+  .tags{
+    display:flex;
+    flex-wrap:wrap;
+    gap:6px;
+  }
+  .tag{
+    font-size:10.5px;
+    font-family:var(--font-display);
+    text-transform:uppercase;
+    letter-spacing:0.08em;
+    padding:3px 8px;
+    border-radius:99px;
+    background:var(--tint-primary);
+    color:var(--primary);
+    border:1px solid var(--tint-primary-2);
+  }
+
+  footer{
+    padding:20px 28px;
+    border-top:1px solid var(--rule);
+    color:var(--ink-faint);
+    font-size:12px;
+    display:flex;
+    justify-content:space-between;
+    flex-wrap:wrap;
+    gap:8px;
+  }
+
+  @media (max-width:560px){
+    .hero h1{font-size:26px}
+    main{padding:36px 20px 28px}
+    header.topbar{padding:14px 18px}
+    footer{padding:16px 18px}
+  }
+</style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand"><span class="dot"></span>vs<em>-utils</em></div>
+    <div class="meta">local tools · static html</div>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div class="eyebrow">Index</div>
+      <h1>Tiny <em>utilities</em>, one folder.</h1>
+      <p>A minimal launcher for the standalone HTML tools in this folder. Pick one to open it in this same tab.</p>
+    </section>
+
+    <section class="grid" aria-label="Available tools">
+      <a class="card" href="overlay-diff.html">
+        <div class="row">
+          <span class="index">01 · diff</span>
+          <span class="arrow" aria-hidden="true">→</span>
+        </div>
+        <h2>Overlay <em>Diff</em></h2>
+        <p>Pick a Kustomize repository and inspect drift across overlays — image tags, ConfigMap keys/values, Secret keys, and Deployment resource overrides side by side.</p>
+        <div class="tags">
+          <span class="tag">kustomize</span>
+          <span class="tag">k8s</span>
+          <span class="tag">audit</span>
+        </div>
+        <div class="file">overlay-diff.html</div>
+      </a>
+
+      <a class="card" href="package-parser.html">
+        <div class="row">
+          <span class="index">02 · parser</span>
+          <span class="arrow" aria-hidden="true">→</span>
+        </div>
+        <h2>Package <em>Parser</em></h2>
+        <p>Drop one or more VKYC package JSON files to visualise their workflow phases. Each file lands as its own tab for quick comparison.</p>
+        <div class="tags">
+          <span class="tag">vkyc</span>
+          <span class="tag">json</span>
+          <span class="tag">workflow</span>
+        </div>
+        <div class="file">package-parser.html</div>
+      </a>
+    </section>
+  </main>
+
+  <footer>
+    <span>vs-utils</span>
+    <span>open files in same tab · no build step</span>
+  </footer>
+</body>
+</html>
