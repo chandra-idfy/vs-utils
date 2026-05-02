@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Profile Gateway API — Onboarding Guide</title>
+<style>
+  :root {
+    --bg: #ffffff;
+    --fg: #1f2328;
+    --muted: #656d76;
+    --border: #d0d7de;
+    --code-bg: #f6f8fa;
+    --accent: #0969da;
+    --accent-soft: #ddf4ff;
+    --table-header: #f6f8fa;
+    --table-row-alt: #fafbfc;
+    --hotspot: #fff8c5;
+    --hotspot-border: #d4a72c;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0d1117;
+      --fg: #e6edf3;
+      --muted: #8b949e;
+      --border: #30363d;
+      --code-bg: #161b22;
+      --accent: #58a6ff;
+      --accent-soft: #0c2d4a;
+      --table-header: #161b22;
+      --table-row-alt: #11161d;
+      --hotspot: #3d2e00;
+      --hotspot-border: #d4a72c;
+    }
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    background: var(--bg);
+    color: var(--fg);
+    line-height: 1.6;
+    margin: 0;
+    padding: 0;
+    font-size: 16px;
+  }
+  .layout { display: grid; grid-template-columns: 280px 1fr; min-height: 100vh; }
+  nav.toc {
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    overflow-y: auto;
+    padding: 1.5rem 1rem;
+    border-right: 1px solid var(--border);
+    background: var(--code-bg);
+    font-size: 0.9rem;
+  }
+  nav.toc h2 { font-size: 0.85rem; text-transform: uppercase; color: var(--muted); margin: 0 0 0.75rem; letter-spacing: 0.5px; }
+  nav.toc ul { list-style: none; padding: 0; margin: 0 0 1.25rem; }
+  nav.toc li { margin: 0.3rem 0; }
+  nav.toc a {
+    color: var(--fg);
+    text-decoration: none;
+    display: block;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    border-left: 2px solid transparent;
+  }
+  nav.toc a:hover { background: var(--accent-soft); color: var(--accent); border-left-color: var(--accent); }
+  nav.toc ul.sub { padding-left: 0.75rem; font-size: 0.83rem; }
+  nav.toc ul.sub a { color: var(--muted); }
+  main { padding: 2.5rem 3rem; max-width: 1080px; }
+  h1 { font-size: 2.1rem; border-bottom: 2px solid var(--border); padding-bottom: 0.4rem; margin-top: 0; }
+  h2 { font-size: 1.55rem; border-bottom: 1px solid var(--border); padding-bottom: 0.3rem; margin-top: 2.5rem; }
+  h3 { font-size: 1.2rem; margin-top: 1.75rem; color: var(--accent); }
+  h4 { font-size: 1.05rem; margin-top: 1.25rem; }
+  hr { border: 0; border-top: 1px solid var(--border); margin: 2.5rem 0; }
+  code {
+    font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    padding: 0.1em 0.4em;
+    border-radius: 4px;
+    font-size: 0.875em;
+  }
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 1rem 0;
+    font-size: 0.92rem;
+  }
+  th, td {
+    border: 1px solid var(--border);
+    padding: 0.55rem 0.85rem;
+    text-align: left;
+    vertical-align: top;
+  }
+  th { background: var(--table-header); font-weight: 600; }
+  tr:nth-child(even) td { background: var(--table-row-alt); }
+  ul li { margin: 0.25rem 0; }
+  ul ul { margin: 0.25rem 0; }
+  .meta {
+    background: var(--accent-soft);
+    border-left: 4px solid var(--accent);
+    padding: 0.75rem 1rem;
+    border-radius: 0 6px 6px 0;
+    margin: 1rem 0;
+  }
+  .meta ul { margin: 0; padding-left: 1.25rem; }
+  .layer-card {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1rem 1.25rem;
+    margin: 0.75rem 0;
+    background: var(--table-row-alt);
+  }
+  .layer-card h3 { margin-top: 0; }
+  .layer-count { float: right; font-size: 0.85rem; color: var(--muted); font-weight: normal; }
+  .hotspot-note {
+    background: var(--hotspot);
+    border-left: 4px solid var(--hotspot-border);
+    padding: 0.75rem 1rem;
+    border-radius: 0 6px 6px 0;
+    margin: 1rem 0;
+  }
+  table.hotspot-table td:first-child { font-family: ui-monospace, SFMono-Regular, monospace; font-size: 0.85em; white-space: nowrap; }
+  .badge {
+    display: inline-block;
+    padding: 0.1em 0.55em;
+    border-radius: 10px;
+    font-size: 0.78em;
+    background: var(--accent-soft);
+    color: var(--accent);
+    margin-right: 0.3em;
+  }
+  footer { margin-top: 3rem; padding-top: 1rem; border-top: 1px solid var(--border); color: var(--muted); font-size: 0.85rem; }
+  @media (max-width: 900px) {
+    .layout { grid-template-columns: 1fr; }
+    nav.toc { position: static; height: auto; border-right: 0; border-bottom: 1px solid var(--border); }
+    main { padding: 1.5rem; }
+  }
+</style>
+</head>
+<body>
+<div class="layout">
+
+<nav class="toc">
+  <h2>Contents</h2>
+  <ul>
+    <li><a href="#overview">Project Overview</a></li>
+    <li><a href="#layers">Architecture Layers</a>
+      <ul class="sub">
+        <li><a href="#layer-1">Infrastructure</a></li>
+        <li><a href="#layer-2">CI/CD</a></li>
+        <li><a href="#layer-3">Configuration</a></li>
+        <li><a href="#layer-4">Documentation</a></li>
+        <li><a href="#layer-5">Package Definitions</a></li>
+        <li><a href="#layer-6">Web Boundary</a></li>
+        <li><a href="#layer-7">Domain</a></li>
+        <li><a href="#layer-8">Integrations</a></li>
+        <li><a href="#layer-9">Persistence</a></li>
+        <li><a href="#layer-10">Async Messaging</a></li>
+        <li><a href="#layer-11">Utilities</a></li>
+      </ul>
+    </li>
+    <li><a href="#concepts">Key Concepts</a></li>
+    <li><a href="#tour">Guided Tour</a></li>
+    <li><a href="#filemap">File Map</a>
+      <ul class="sub">
+        <li><a href="#fm-http">HTTP Boundary</a></li>
+        <li><a href="#fm-domain">Domain Contexts</a></li>
+        <li><a href="#fm-integrations">Integrations</a></li>
+        <li><a href="#fm-data">Data &amp; Infra</a></li>
+        <li><a href="#fm-runtime">Runtime &amp; Observability</a></li>
+      </ul>
+    </li>
+    <li><a href="#hotspots">Complexity Hotspots</a></li>
+  </ul>
+</nav>
+
+<main>
+
+<h1 id="overview">Profile Gateway API — Onboarding Guide</h1>
+
+<p><strong>Profile Gateway API</strong> is a KYC/identity-verification gateway built on <strong>Elixir/Phoenix</strong>. It coordinates profile creation, capture artifacts, verification tasks, and external provider calls. Backed by <strong>Postgres (Ecto)</strong>, <strong>Redis</strong>, and <strong>RabbitMQ</strong>.</p>
+
+<div class="meta">
+  <ul>
+    <li><strong>Languages:</strong> Elixir, JSON, YAML, Shell, Dockerfile</li>
+    <li><strong>Core frameworks:</strong> Phoenix, Phoenix Ecto, Phoenix PubSub, Plug Cowboy, Distillery</li>
+    <li><strong>Notable libs:</strong> AppSignal, Goth + Google API Storage, HTTPoison/Finch/Hackney, Canary (authz), CorsPlug, Libcluster, JOSE, Redix, ExSM (state machines), Gettext, logger_json</li>
+    <li><strong>Static analysis &amp; testing:</strong> Sobelow, Credo, ExCoveralls, Bypass</li>
+    <li><strong>Ship pipeline:</strong> Docker + GitLab CI</li>
+    <li><strong>Analyzed at:</strong> 2026-04-30 (commit <code>5b387331b</code>)</li>
+  </ul>
+</div>
+
+<hr>
+
+<h2 id="layers">Architecture Layers</h2>
+<p>The codebase is organized into 11 layers. Read them in this order — each builds on the prior.</p>
+
+<div class="layer-card" id="layer-1">
+  <h3>1. Infrastructure &amp; Deployment <span class="layer-count">8 files</span></h3>
+  <p>Container build files (<code>Dockerfile</code>, <code>Dockerfile.ubi8</code>), deploy scripts (<code>kube/deploy.sh</code>, <code>deploy/run-server.sh</code>), <code>mix.exs</code>, <code>.tool-versions</code>, pre-commit hook, <code>.dockerignore</code>.</p>
+</div>
+
+<div class="layer-card" id="layer-2">
+  <h3>2. CI/CD Pipeline <span class="layer-count">1 file</span></h3>
+  <p><code>.gitlab-ci.yml</code> — drives lint, test, build, and deploy stages.</p>
+</div>
+
+<div class="layer-card" id="layer-3">
+  <h3>3. Configuration &amp; Tooling <span class="layer-count">7 files</span></h3>
+  <p><code>config/{config,dev,prod,test}.exs</code> plus <code>.credo.exs</code>, <code>.formatter.exs</code>, <code>.sobelow-conf</code>. Pure declarative knobs.</p>
+</div>
+
+<div class="layer-card" id="layer-4">
+  <h3>4. Documentation &amp; Process Templates <span class="layer-count">6 files</span></h3>
+  <p><code>README.md</code>, <code>CHANGELOG.md</code>, <code>docs/package/PACKAGE.md</code> (the Package DSL spec), <code>.gitlab/merge_request_templates/*</code>.</p>
+</div>
+
+<div class="layer-card" id="layer-5">
+  <h3>5. Package Definitions — Workflow DSL <span class="layer-count">33 files</span></h3>
+  <p>JSONC documents under <code>docs/package/**</code> (per-tenant flows: <code>airbnb</code>, <code>axis_bank</code>, <code>default</code>, <code>kotak_investment</code>) plus <code>priv/repo/vietnam_nid_selfie.jsonc</code>. These are <strong>runtime workflow definitions</strong> — declarative descriptions of capture/task/decision pipelines that the Packages parser tree consumes.</p>
+</div>
+
+<div class="layer-card" id="layer-6">
+  <h3>6. HTTP &amp; Realtime Boundary — Phoenix Web <span class="layer-count">97 files</span></h3>
+  <p>Everything under <code>lib/kyc_gateway_backend_web/*</code> — endpoint, router, controllers, JSON views, channels, plug pipelines, telemetry, gettext.</p>
+</div>
+
+<div class="layer-card" id="layer-7">
+  <h3>7. Domain Logic &amp; Contexts <span class="layer-count">130 files</span></h3>
+  <p>The core "what the system does" — Phoenix contexts: <code>profiles</code>, <code>profile_actions</code>, <code>packages</code>, <code>captures</code>, <code>tasks</code>, <code>artifacts</code>, <code>accounts</code>, <code>authorization</code>, <code>groups</code>, <code>communications</code>, <code>themes</code>, <code>translations</code>, <code>reasons</code>, <code>rules</code>, <code>rule_workflows</code>, <code>snapshots</code>, <code>propensity_engine</code>, <code>risk_engine</code>, <code>video_onboarding</code>, etc.</p>
+</div>
+
+<div class="layer-card" id="layer-8">
+  <h3>8. External Integrations &amp; Outbound Services <span class="layer-count">27 files</span></h3>
+  <p><code>lib/kyc_gateway_backend/services/*</code> (human_workflow, realtime_review, truesight, archival, document_fetcher, idfy_storage, self_video, video_activity, work_assign, work_monitor), <code>external_providers/*</code>, <code>webhooks/*</code>, the <code>api_gateway/</code> subtree.</p>
+</div>
+
+<div class="layer-card" id="layer-9">
+  <h3>9. Data Persistence — Ecto Schemas &amp; Repos <span class="layer-count">33 files</span></h3>
+  <p><code>repo.ex</code>, <code>datastore_repo.ex</code>, <code>ecto_enums.ex</code>, plus every persisted schema for profiles, tasks, artifacts, captures, accounts/users, roles/permissions, themes, translations, reasons, rule_workflows, snapshots.</p>
+</div>
+
+<div class="layer-card" id="layer-10">
+  <h3>10. Async Messaging &amp; Background Jobs <span class="layer-count">15 files</span></h3>
+  <p>RabbitMQ producers/consumers (<code>rmq/*</code>), Redis wrappers (<code>redis/*</code>), scheduled cron jobs (<code>crons/*</code>), and <code>dynamic_supervisor.ex</code>.</p>
+</div>
+
+<div class="layer-card" id="layer-11">
+  <h3>11. Cross-Cutting Utilities &amp; Runtime <span class="layer-count">34 files</span></h3>
+  <p><code>utils/*</code>, <code>metrics/*</code>, <code>lib/instrumenter/*</code>, <code>application.ex</code> (OTP supervision tree), <code>abilities.ex</code>, <code>release.ex</code>, constants/crypto helpers.</p>
+</div>
+
+<hr>
+
+<h2 id="concepts">Key Concepts</h2>
+<ul>
+  <li><strong>Profile is the central aggregate.</strong> A <code>Profile</code> represents one customer's KYC journey from creation through completion. The data model is <code>Profile → Task → Capture → Artifact</code>.</li>
+  <li><strong>Packages are a JSONC DSL.</strong> Tenants configure flows declaratively (see <code>docs/package/PACKAGE.md</code>); <code>parser.ex</code> compiles them into in-memory structures that drive Task creation.</li>
+  <li><strong>State machines are explicit.</strong> Both <code>Profile</code> and <code>Task</code> lifecycles are governed by ExSM-driven state machines (<code>profile_state_machine.ex</code>, <code>task_state_machine.ex</code>) that fire side effects (notifications, webhooks, transitions).</li>
+  <li><strong>Rule engine + rule workflows.</strong> <code>rule_engine.ex</code> recursively evaluates AND/OR/==/!= boolean expressions over task/artifact/profile data; <code>rule_workflow_engine.ex</code> runs configured workflows for risk, propensity, and decision-making.</li>
+  <li><strong>Multi-tenant via OrganizationUnit.</strong> OU is the tenant aggregate (<code>x-idfy-ou-id</code> header → <code>cust.ex</code> plug → <code>OrganizationUnit</code>).</li>
+  <li><strong>Authorization is policy-based.</strong> <code>abilities.ex</code> implements <code>Canada.Can</code> for <code>User</code>, used via Canary plugs across all controllers.</li>
+  <li><strong>Encryption is built into the Repo.</strong> <code>repo.ex</code> transparently encrypts/decrypts sensitive structs (Profile, Artifact, Task, Snapshot) with per-OU keys via <code>payload_encryption.ex</code> (KeyStore + DEK rotation).</li>
+  <li><strong>Realtime is first-class.</strong> Mobile/web clients hold long-lived WebSockets via <code>profile_socket.ex</code>, <code>capture_socket.ex</code>, <code>agent_socket.ex</code>. Channels broadcast state changes.</li>
+  <li><strong>Async work goes through RabbitMQ + Redis.</strong> Profile transitions, webhook delivery, purges, and long-running provider calls are decoupled via consumers/publishers.</li>
+</ul>
+
+<hr>
+
+<h2 id="tour">Guided Tour (13 Steps)</h2>
+<table>
+  <thead>
+    <tr><th>#</th><th>Step</th><th>Key Files</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>1</td><td><strong>Project Overview</strong></td><td><code>README.md</code>, <code>mix.exs</code>, <code>CHANGELOG.md</code></td></tr>
+    <tr><td>2</td><td><strong>OTP Boot &amp; Supervision Tree</strong></td><td><code>lib/kyc_gateway_backend/application.ex</code>, <code>lib/release.ex</code>, <code>config/config.exs</code>, <code>config/prod.exs</code></td></tr>
+    <tr><td>3</td><td><strong>HTTP &amp; WebSocket Entry Points</strong></td><td><code>lib/kyc_gateway_backend_web/endpoint.ex</code>, <code>lib/kyc_gateway_backend_web/router.ex</code> <span class="badge">43 outgoing edges</span></td></tr>
+    <tr><td>4</td><td><strong>Auth &amp; Plug Pipeline</strong></td><td><code>plug/cust.ex</code>, <code>plug/session.ex</code>, <code>plug/authorize_resource.ex</code>, <code>plug/validate_payload.ex</code>, <code>lib/abilities.ex</code></td></tr>
+    <tr><td>5</td><td><strong>Core HTTP Controllers</strong></td><td><code>profile_controller.ex</code>, <code>task_controller.ex</code>, <code>capture_controller.ex</code>, <code>artifact_controller.ex</code></td></tr>
+    <tr><td>6</td><td><strong>Realtime Channels &amp; Sockets</strong></td><td><code>profile_socket.ex</code>, <code>session_channel.ex</code> <span class="badge">2nd-highest fanout</span>, <code>artifact_channel.ex</code>, <code>notification_channel.ex</code></td></tr>
+    <tr><td>7</td><td><strong>Profile Context — Heart of the System</strong></td><td><code>profiles.ex</code> <span class="badge">17 inbound</span>, <code>profiles/profile.ex</code> <span class="badge">21 inbound</span>, <code>profile_state_machine.ex</code>, <code>profile_actions.ex</code></td></tr>
+    <tr><td>8</td><td><strong>Package DSL</strong></td><td><code>docs/package/PACKAGE.md</code>, <code>docs/package/default/default_1.jsonc</code>, <code>packages.ex</code>, <code>packages/package.ex</code>, <code>packages/parser.ex</code> <span class="badge">12 outgoing</span></td></tr>
+    <tr><td>9</td><td><strong>Tasks — Verification Units</strong></td><td><code>tasks.ex</code>, <code>tasks/task.ex</code>, <code>task_state_machine.ex</code>, <code>task_factory.ex</code></td></tr>
+    <tr><td>10</td><td><strong>Captures, Artifacts &amp; Data Model</strong></td><td><code>captures.ex</code>, <code>artifacts.ex</code></td></tr>
+    <tr><td>11</td><td><strong>External Provider Integrations</strong></td><td><code>services/truesight/truesight_request.ex</code>, <code>services/document_fetcher.ex</code>, <code>external_providers/bandhan/orchestrator.ex</code></td></tr>
+    <tr><td>12</td><td><strong>Async Messaging &amp; Webhooks</strong></td><td><code>rmq/profile_transition_consumer.ex</code>, <code>rmq/profiles_publisher.ex</code>, <code>redis/redix_pool.ex</code>, <code>webhooks/session_update_webhook.ex</code>, <code>webhooks/webhook_helper.ex</code></td></tr>
+    <tr><td>13</td><td><strong>Deploy, CI/CD &amp; Observability</strong></td><td><code>Dockerfile</code>, <code>.gitlab-ci.yml</code>, <code>kube/deploy.sh</code>, <code>telemetry.ex</code>, <code>instrumenter/custom_logger.ex</code></td></tr>
+  </tbody>
+</table>
+
+<hr>
+
+<h2 id="filemap">File Map (by Layer)</h2>
+
+<h3 id="fm-http">HTTP Boundary — <code>lib/kyc_gateway_backend_web/</code></h3>
+<ul>
+  <li><strong><code>endpoint.ex</code></strong> — Phoenix Endpoint: agent/capture/dashboard sockets, CORS, parsers, session cookie, plug pipeline.</li>
+  <li><strong><code>router.ex</code></strong> — 22 named pipelines routing <code>/ext</code> (customer/dashboard/agent/workflow) and <code>/int</code> (admin/cron) APIs.</li>
+  <li><strong><code>controllers/profile_controller.ex</code></strong> — Mega-controller: index, create_sync/async, invite, show, cancel, recapture, submit_review, bulk_submit_review, notes, purge, config.</li>
+  <li><strong><code>controllers/task_controller.ex</code></strong> — Central Task controller: response callbacks from API Gateway, Truesight, AssistedVKYC, SelfVideo, ConsentGateway, DocumentFetcher, IDfy360.</li>
+  <li><strong><code>controllers/capture_controller.ex</code></strong> — Capture-session HTTP entrypoints (status, config, redirect-URL validation, create/expire/submit_error).</li>
+  <li><strong><code>controllers/organization_unit_controller.ex</code></strong> — OU/tenant management: config, encryption-key rotation, storage auth, logo upload.</li>
+  <li><strong><code>controllers/package_controller.ex</code></strong> — Package definitions CRUD + version history, validate, update_task_configs, create-profile form schema.</li>
+  <li><strong><code>controllers/utv_task_controller.ex</code></strong> — UTV (un-traceable video) dashboard endpoints with parallel data fetches via <code>Task.async</code>.</li>
+  <li><strong><code>channels/session_channel.ex</code></strong> — Primary capture/task session lifecycle channel — 30+ message handlers (session start/end, fetch_config, update_response, liveness, GPS, page transitions).</li>
+  <li><strong><code>channels/artifact_channel.ex</code></strong> — Artifact lifecycle (update, fetch, fetch_document, initiate_div, initiate_check) for both task and capture sockets.</li>
+  <li><strong><code>channels/notification_channel.ex</code></strong> — Reviewer/operator real-time notifications, Presence tracking, work-item broadcasts.</li>
+  <li><strong><code>plug/cust.ex</code></strong> — Resolves OU from <code>x-idfy-ou-id</code> header, authorizes incoming <code>/cust</code> requests.</li>
+  <li><strong><code>views/profile_view.ex</code></strong> — Central JSON view: 20+ payload variants (dashboard, status, review, capture, scheduling, recapture, undo).</li>
+</ul>
+
+<h3 id="fm-domain">Domain Contexts — <code>lib/kyc_gateway_backend/</code></h3>
+<ul>
+  <li><strong><code>profiles.ex</code></strong> — Core context: CRUD, lifecycle transitions, search, validation, capture/task/artifact orchestration.</li>
+  <li><strong><code>profiles/profile_state_machine.ex</code></strong> — ExSM machine: pending → in-progress → captured → completed → approved/rejected/review with side effects.</li>
+  <li><strong><code>profiles/profile_workflow.ex</code></strong> — Evaluates datapoints (rules, decisions, priorities) to decide a profile's next step.</li>
+  <li><strong><code>profiles/profile_search.ex</code></strong> — Composable Ecto query builder (reference_id, status, OU, dates, package, reviewer, profile-tag, capture-data).</li>
+  <li><strong><code>profiles/profile_notification.ex</code></strong> — SMS/email/WhatsApp dispatch for lifecycle events.</li>
+  <li><strong><code>profiles/request_parser.ex</code></strong> — Largest parser in the system: validates Profile-create requests against the Package definition.</li>
+  <li><strong><code>packages.ex</code></strong> — Packages context: CRUD, validation, feature flags, capture/review/risk derivation.</li>
+  <li><strong><code>packages/parser.ex</code></strong> — Master parser orchestrator for KYC package JSON, dispatching to specialized parsers (capture, review, AVKYC, SVKYC, video, risk, propensity, decision).</li>
+  <li><strong><code>tasks.ex</code></strong> — Tasks context: lifecycle, retries, state transitions, factory, template binding, queries, webhooks.</li>
+  <li><strong><code>tasks/task_state_machine.ex</code></strong> — ExSM: queued → in_progress → processing → saved → completed/failed/cancelled.</li>
+  <li><strong><code>tasks/task_workflow_engine.ex</code></strong> — Executes rule-based workflow actions: initiate, complete, fail, deprecate, clear, copy.</li>
+  <li><strong><code>captures.ex</code></strong> — Capture session lifecycle, recapture, session/auth tokens, status transitions.</li>
+  <li><strong><code>artifacts.ex</code></strong> — CRUD, query, lifecycle over uploaded artifacts (images, PDFs, reports, recordings).</li>
+  <li><strong><code>accounts.ex</code></strong> — Public API for OUs, users, themes, account-level configurations.</li>
+  <li><strong><code>authorization.ex</code></strong> — Role/permission CRUD and access decisions.</li>
+  <li><strong><code>risk_engine/risk_engine_core.ex</code></strong> — Risk evaluation orchestrator: stages, rule workflows, results.</li>
+  <li><strong><code>rule_engine.ex</code></strong> — Recursive boolean expression evaluator (AND/OR/==/!=) over task/artifact/profile sources.</li>
+  <li><strong><code>rule_workflows/rule_workflow_engine.ex</code></strong> — Single/multi-mode workflow evaluation aggregating per-workflow results.</li>
+  <li><strong><code>snapshots/save_attempt_snapshot.ex</code></strong> — 1093-line snapshot writer capturing comprehensive profile-attempt state.</li>
+</ul>
+
+<h3 id="fm-integrations">External Integrations</h3>
+<ul>
+  <li><strong><code>services/truesight/truesight_request.ex</code></strong> — Liveness/face-match.</li>
+  <li><strong><code>services/document_fetcher.ex</code></strong> — Government documents (PAN, Aadhaar, CKYC).</li>
+  <li><strong><code>external_providers/bandhan/orchestrator.ex</code></strong> — Multi-step Bandhan Bank flow (template for new providers).</li>
+  <li><strong><code>external_providers/unity_bank/orchestrator.ex</code></strong> — Unity Bank flow.</li>
+  <li><strong><code>api_gateway.ex</code></strong> — Coordinates outbound provider calls and request dispatch.</li>
+  <li><strong><code>idfy_360.ex</code></strong> — IDfy 360 third-party proxy.</li>
+  <li><strong><code>webhooks/session_update_webhook.ex</code></strong> — Video-call session updates with idempotency.</li>
+  <li><strong><code>webhooks/task_update_webhook.ex</code></strong> — Task status changes, attempt snapshots, normalized payloads.</li>
+</ul>
+
+<h3 id="fm-data">Data &amp; Infrastructure</h3>
+<ul>
+  <li><strong><code>repo.ex</code></strong> — Ecto.Repo wrapper with state-machine-aware insert/update + transparent encryption.</li>
+  <li><strong><code>payload_encryption.ex</code></strong> — KeyStore lifecycle, DEK rotation, key management.</li>
+  <li><strong><code>utils/encryption.ex</code> / <code>utils/decryption.ex</code></strong> — AES/RSA helpers, tenant key management.</li>
+  <li><strong><code>utils/storage_service.ex</code></strong> — GCS abstraction: download, base64, bucket creation, upload-with-retry.</li>
+  <li><strong><code>utils/http_processor.ex</code></strong> — Outbound webhooks with retry, mTLS, custom certs.</li>
+  <li><strong><code>utils/pii_service.ex</code></strong> — PII publication and GDPR purge events.</li>
+  <li><strong><code>rmq/profile_transition_consumer.ex</code></strong> — Receives state-change messages.</li>
+  <li><strong><code>rmq/profiles_publisher.ex</code></strong> — Emits state-change messages.</li>
+  <li><strong><code>redis/redix_pool.ex</code></strong> — Connection pool for caching, locks, ephemeral session data.</li>
+  <li><strong><code>purge_processor.ex</code></strong> — Iterates retention-expired profiles; archives + removes related captures/tasks/artifacts/encrypted payloads.</li>
+</ul>
+
+<h3 id="fm-runtime">Runtime &amp; Observability</h3>
+<ul>
+  <li><strong><code>application.ex</code></strong> — OTP supervisor: Repo, Endpoint, PubSub, hackney pools, RabbitMQ consumers, Redis pools.</li>
+  <li><strong><code>release.ex</code></strong> — Distillery release tasks (migrate, seed, data-setup) for production.</li>
+  <li><strong><code>telemetry.ex</code></strong> — Telemetry.Metrics: Phoenix endpoint duration, router dispatch latency, VM stats, Ecto query timings.</li>
+  <li><strong><code>instrumenter/custom_logger.ex</code></strong> — Structured logging with event_type, ou_id, correlation_id, x_request_id, app_vsn.</li>
+</ul>
+
+<hr>
+
+<h2 id="hotspots">Complexity Hotspots — Approach with Care</h2>
+<p>The graph reports <code>simple</code> / <code>moderate</code> / <code>complex</code> (not numeric scores). <strong>105 files are flagged <code>complex</code>.</strong> The 12 below combine high complexity with high blast radius — <strong>read these slowly</strong>, with tests open.</p>
+
+<table class="hotspot-table">
+  <thead>
+    <tr><th>File</th><th>Why it's a hotspot</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>lib/kyc_gateway_backend_web/router.ex</td><td>22 pipelines, highest outgoing fanout (43). Wires every URL pattern to a controller.</td></tr>
+    <tr><td>lib/kyc_gateway_backend_web/channels/session_channel.ex</td><td>30+ message handlers covering the entire capture/task session lifecycle.</td></tr>
+    <tr><td>lib/kyc_gateway_backend_web/controllers/profile_controller.ex</td><td>Mega-controller covering the entire profile lifecycle.</td></tr>
+    <tr><td>lib/kyc_gateway_backend_web/controllers/task_controller.ex</td><td>Receives callbacks from 7+ external systems (API Gateway, Truesight, AssistedVKYC, SelfVideo, ConsentGateway, DocumentFetcher, IDfy360).</td></tr>
+    <tr><td>lib/kyc_gateway_backend/profiles.ex</td><td>17 inbound edges — the most-imported domain module.</td></tr>
+    <tr><td>lib/kyc_gateway_backend/profiles/profile_state_machine.ex</td><td>ExSM machine governing all profile transitions and side effects.</td></tr>
+    <tr><td>lib/kyc_gateway_backend/profiles/request_parser.ex</td><td>Largest parser — normalizes user input into canonical task/capture/artifact structures.</td></tr>
+    <tr><td>lib/kyc_gateway_backend/packages/parser.ex</td><td>Master orchestrator for KYC package JSON, fans out to specialized parsers.</td></tr>
+    <tr><td>lib/kyc_gateway_backend/captures.ex</td><td>Massive captures context: full session lifecycle, recapture, session/auth tokens.</td></tr>
+    <tr><td>lib/kyc_gateway_backend/repo.ex</td><td>Custom Ecto.Repo with state-machine-aware writes + transparent encryption. <strong>Be careful changing this.</strong></td></tr>
+    <tr><td>lib/kyc_gateway_backend/snapshots/save_attempt_snapshot.ex</td><td>1093-line snapshot writer.</td></tr>
+    <tr><td>lib/kyc_gateway_backend/profile_actions/profile_action_search.ex</td><td>Search/analytics layer with composable Ecto query pipelines for the dashboard.</td></tr>
+  </tbody>
+</table>
+
+<div class="hotspot-note">
+  <strong>Other complex areas to flag:</strong>
+  <ul>
+    <li>The entire <code>packages/parser/*</code> family (artifact, assisted_video, capture, decision_engine, generic_page, task, template parsers) — the package DSL is large and validation is spread across these files.</li>
+    <li><code>risk_engine/</code>, <code>propensity_engine/</code>, <code>rule_engine.ex</code>, <code>rule_workflows/</code> — interconnected decisioning logic.</li>
+    <li><code>external_providers/bandhan/orchestrator.ex</code> and <code>external_providers/unity_bank/orchestrator.ex</code> — multi-step flows specific to each bank.</li>
+    <li><code>utv_handler.ex</code> + <code>utv_tasks.ex</code> + <code>utv_artifacts.ex</code> — the unable-to-verify subsystem.</li>
+  </ul>
+</div>
+
+<footer>
+  Generated from <code>.understand-anything/knowledge-graph.json</code> · Project commit <code>5b387331b</code> · Analyzed 2026-04-30
+</footer>
+
+</main>
+</div>
+</body>
+</html>
