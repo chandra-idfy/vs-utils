@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>vs-utils — tools</title>
+<title>PG/VS Knowledge Base — vs-utils</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
@@ -56,35 +56,6 @@
     z-index:5;
   }
 
-  .topbar-right{
-    display:flex;
-    align-items:center;
-    gap:18px;
-  }
-
-  a.kb-link{
-    font-family:var(--font-display);
-    font-size:12px;
-    text-transform:uppercase;
-    letter-spacing:0.12em;
-    color:var(--primary);
-    text-decoration:none;
-    padding:6px 12px;
-    border:1px solid var(--tint-primary-2);
-    border-radius:99px;
-    background:var(--tint-primary);
-    transition:background .15s ease, border-color .15s ease, color .15s ease;
-  }
-  a.kb-link:hover{
-    background:var(--primary);
-    border-color:var(--primary);
-    color:#fff;
-  }
-  a.kb-link:focus-visible{
-    outline:2px solid var(--primary);
-    outline-offset:2px;
-  }
-
   .brand{
     font-family:var(--font-display);
     font-weight:700;
@@ -93,6 +64,8 @@
     display:flex;
     align-items:center;
     gap:10px;
+    color:inherit;
+    text-decoration:none;
   }
   .brand .dot{
     width:8px;height:8px;border-radius:50%;
@@ -102,6 +75,34 @@
   .brand em{
     color:var(--primary);
     font-style:normal;
+  }
+
+  .topbar-right{
+    display:flex;
+    align-items:center;
+    gap:18px;
+  }
+
+  a.back-link{
+    font-family:var(--font-display);
+    font-size:12px;
+    text-transform:uppercase;
+    letter-spacing:0.12em;
+    color:var(--ink-muted);
+    text-decoration:none;
+    padding:6px 12px;
+    border:1px solid var(--rule);
+    border-radius:99px;
+    transition:border-color .15s ease, color .15s ease, background .15s ease;
+  }
+  a.back-link:hover{
+    border-color:var(--rule-strong);
+    color:var(--ink);
+    background:#fff;
+  }
+  a.back-link:focus-visible{
+    outline:2px solid var(--primary);
+    outline-offset:2px;
   }
 
   .meta{
@@ -269,60 +270,62 @@
     main{padding:36px 20px 28px}
     header.topbar{padding:14px 18px}
     footer{padding:16px 18px}
+    .topbar-right{gap:10px}
+    .meta{display:none}
   }
 </style>
 </head>
 <body>
   <header class="topbar">
-    <div class="brand"><span class="dot"></span>vs<em>-utils</em></div>
+    <a class="brand" href="index.html"><span class="dot"></span>vs<em>-utils</em></a>
     <div class="topbar-right">
-      <a class="kb-link" href="knowledge-base.html">PG/VS Knowledge Base</a>
-      <div class="meta">local tools · static html</div>
+      <a class="back-link" href="index.html">← Back to tools</a>
+      <div class="meta">knowledge base · static html</div>
     </div>
   </header>
 
   <main>
     <section class="hero">
-      <div class="eyebrow">Index</div>
-      <h1>Tiny <em>utilities</em>, one folder.</h1>
-      <p>A minimal launcher for the standalone HTML tools in this folder. Pick one to open it in this same tab.</p>
+      <div class="eyebrow">PG / VS</div>
+      <h1>PG/VS <em>Knowledge Base</em>.</h1>
+      <p>Reference documents for the PG/VS APIs — code overview and domain knowledge. Pick one to open it in this same tab.</p>
     </section>
 
-    <section class="grid" aria-label="Available tools">
-      <a class="card" href="overlay-diff.html">
+    <section class="grid" aria-label="Knowledge base documents">
+      <a class="card" href="pg-api-code-overview.html">
         <div class="row">
-          <span class="index">01 · diff</span>
+          <span class="index">01 · code</span>
           <span class="arrow" aria-hidden="true">→</span>
         </div>
-        <h2>Overlay <em>Diff</em></h2>
-        <p>Pick a Kustomize repository and inspect drift across overlays — image tags, ConfigMap keys/values, Secret keys, and Deployment resource overrides side by side.</p>
+        <h2>PG API <em>Code Overview</em></h2>
+        <p>High-level walkthrough of the PG API codebase — modules, entry points, and how the pieces fit together.</p>
         <div class="tags">
-          <span class="tag">kustomize</span>
-          <span class="tag">k8s</span>
-          <span class="tag">audit</span>
+          <span class="tag">pg-api</span>
+          <span class="tag">code</span>
+          <span class="tag">overview</span>
         </div>
-        <div class="file">overlay-diff.html</div>
+        <div class="file">pg-api-code-overview.html</div>
       </a>
 
-      <a class="card" href="package-parser.html">
+      <a class="card" href="pg-api-domain-knowledge.html">
         <div class="row">
-          <span class="index">02 · parser</span>
+          <span class="index">02 · domain</span>
           <span class="arrow" aria-hidden="true">→</span>
         </div>
-        <h2>Package <em>Parser</em></h2>
-        <p>Drop one or more VKYC package JSON files to visualise their workflow phases. Each file lands as its own tab for quick comparison.</p>
+        <h2>PG API <em>Domain Knowledge</em></h2>
+        <p>Domain concepts, business flows, and entity relationships behind the PG API — the "why" and "what" alongside the "how".</p>
         <div class="tags">
-          <span class="tag">vkyc</span>
-          <span class="tag">json</span>
-          <span class="tag">workflow</span>
+          <span class="tag">pg-api</span>
+          <span class="tag">domain</span>
+          <span class="tag">reference</span>
         </div>
-        <div class="file">package-parser.html</div>
+        <div class="file">pg-api-domain-knowledge.html</div>
       </a>
     </section>
   </main>
 
   <footer>
-    <span>vs-utils</span>
+    <span>vs-utils · knowledge base</span>
     <span>open files in same tab · no build step</span>
   </footer>
 </body>
