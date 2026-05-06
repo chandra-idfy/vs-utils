@@ -793,13 +793,15 @@ code, .resource-name {
   background: var(--ink);
   border-color: var(--ink);
 }
-.env-picker-menu label {
+header.topbar .env-picker-menu label {
   display: flex; align-items: center; gap: 10px;
   padding: 5px 10px;
   cursor: pointer;
   border-radius: 2px;
   font-size: 12px;
   letter-spacing: 0.01em;
+  text-transform: none;
+  color: var(--ink);
   transition: background .12s, color .12s;
 }
 .env-picker-menu label:hover {
@@ -827,6 +829,42 @@ code, .resource-name {
   text-transform: uppercase;
   color: var(--vermillion);
   font-weight: 500;
+}
+
+/* Resource picker — extends env picker visually with section headers + scroll */
+.resource-picker-menu {
+  max-height: 420px;
+  overflow-y: auto;
+}
+.resource-picker-menu .picker-section-header {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--vermillion);
+  padding: 10px 10px 4px;
+  border-top: 1px solid var(--rule);
+  margin-top: 4px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.resource-picker-menu .picker-section-header:first-of-type {
+  border-top: none;
+  margin-top: 0;
+  padding-top: 4px;
+}
+.resource-picker-menu .picker-section-header .picker-section-count {
+  margin-left: auto;
+  color: var(--ink-faint);
+  font-weight: 500;
+}
+.resource-picker-menu .picker-empty {
+  padding: 6px 10px;
+  color: var(--ink-faint);
+  font-style: italic;
+  font-size: 11px;
 }
 
 /* ── Landing page ────────────────────────────────────────── */
@@ -1070,6 +1108,10 @@ code, .resource-name {
     <div class="env-picker">
       <button id="env-picker-btn" type="button" hidden>Envs ▾</button>
       <div class="env-picker-menu" id="env-picker-menu" hidden></div>
+    </div>
+    <div class="env-picker resource-picker">
+      <button id="resource-picker-btn" type="button" hidden>Resources ▾</button>
+      <div class="env-picker-menu resource-picker-menu" id="resource-picker-menu" hidden></div>
     </div>
     <button id="expand-all" type="button">Expand all</button>
     <button id="collapse-all" type="button">Collapse all</button>
@@ -1488,7 +1530,7 @@ function sectionConfigmapsHtml(ref, others, filterUrls, projectId) {
     const badges = [`<span class="badge">${diffRows.length}/${allKeys.size} diverge</span>`];
     if (missingIn.length) badges.push(`<span class="badge badge-muted">missing in ${missingIn.map(hesc).join(", ")}</span>`);
 
-    parts.push('<details open class="resource-block">');
+    parts.push(`<details open class="resource-block" data-resource="${hesc(cmName)}" data-resource-kind="configmap">`);
     parts.push(`<summary><code class="resource-name">${hesc(cmName)}</code>${badges.join("")}</summary>`);
     if (diffRows.length) {
       const headers = ["Key", hesc(ref.name)].concat(others.map(o => hesc(o.name)));
@@ -1530,7 +1572,7 @@ function sectionSecretsHtml(ref, others, projectId) {
       const cells = [htmlTruncatable(k, "key")].concat(presence.map(p => p ? '<span class="present">✓</span>' : '<span class="absent">—</span>'));
       rows.push({ key: k, diff: true, cells });
     }
-    parts.push('<details open class="resource-block">');
+    parts.push(`<details open class="resource-block" data-resource="${hesc(secName)}" data-resource-kind="secret">`);
     parts.push(`<summary><code class="resource-name">${hesc(secName)}</code><span class="badge">${rows.length} differ</span></summary>`);
     if (rows.length) {
       const headers = ["Key"].concat(allOverlays.map(o => hesc(o.name)));
@@ -1864,6 +1906,112 @@ function buildEnvPicker(projects) {
   applyEnvVisibility(menu);
 }
 
+// ---------- resource (configmap/secret) visibility picker ----------
+
+function collectResourceNames(projects) {
+  // Returns { configMaps: string[], secrets: string[] }, sorted, dedup'd, with
+  // the same exclusion filter that the report rendering applies (so the picker
+  // only lists what's actually visible by default).
+  const configMaps = new Set();
+  const secrets = new Set();
+  for (const p of projects) {
+    for (const o of p.overlays) {
+      for (const k of Object.keys(o.configMaps || {})) {
+        if (!isExcludedResource(k)) configMaps.add(k);
+      }
+      for (const k of Object.keys(o.secrets || {})) {
+        if (!isExcludedResource(k)) secrets.add(k);
+      }
+    }
+  }
+  return { configMaps: [...configMaps].sort(), secrets: [...secrets].sort() };
+}
+
+function applyResourceVisibility(menu) {
+  // Single <style> rule hides every <details data-resource="..." data-resource-kind="...">
+  // whose checkbox is unchecked. Counts elsewhere stay accurate to the full data set.
+  let styleEl = document.getElementById("resource-overrides");
+  if (!styleEl) {
+    styleEl = document.createElement("style");
+    styleEl.id = "resource-overrides";
+    document.head.appendChild(styleEl);
+  }
+  const hidden = [...menu.querySelectorAll("input[type=checkbox][data-resource]")]
+    .filter(cb => !cb.checked)
+    .map(cb => ({ name: cb.dataset.resource, kind: cb.dataset.resourceKind }));
+  styleEl.textContent = hidden.length
+    ? hidden.map(h => `[data-resource="${cssEscape(h.name)}"][data-resource-kind="${h.kind}"]`).join(",") + " { display: none; }"
+    : "";
+  const btn = document.getElementById("resource-picker-btn");
+  if (btn) {
+    const total = menu.querySelectorAll("input[type=checkbox][data-resource]").length;
+    const visible = total - hidden.length;
+    btn.textContent = `Resources (${visible}/${total}) ▾`;
+  }
+}
+
+function buildResourcePicker(projects) {
+  const { configMaps, secrets } = collectResourceNames(projects);
+  const btn = document.getElementById("resource-picker-btn");
+  const menu = document.getElementById("resource-picker-menu");
+  menu.innerHTML = "";
+
+  // No filterable resources at all → leave the button hidden and bail.
+  if (!configMaps.length && !secrets.length) { btn.hidden = true; return; }
+
+  // Bulk-action row.
+  const actions = document.createElement("div");
+  actions.className = "env-picker-actions";
+  const showAllBtn = document.createElement("button"); showAllBtn.type = "button"; showAllBtn.textContent = "Show all";
+  const hideAllBtn = document.createElement("button"); hideAllBtn.type = "button"; hideAllBtn.textContent = "Hide all";
+  actions.append(showAllBtn, hideAllBtn);
+  menu.appendChild(actions);
+
+  function addSection(title, kind, names) {
+    if (!names.length) return;
+    const header = document.createElement("div");
+    header.className = "picker-section-header";
+    header.textContent = title;
+    const count = document.createElement("span");
+    count.className = "picker-section-count";
+    count.textContent = names.length;
+    header.appendChild(count);
+    menu.appendChild(header);
+
+    for (const name of names) {
+      const label = document.createElement("label");
+      const cb = document.createElement("input");
+      cb.type = "checkbox";
+      cb.dataset.resource = name;
+      cb.dataset.resourceKind = kind;
+      cb.checked = true;
+      cb.addEventListener("change", () => applyResourceVisibility(menu));
+      label.appendChild(cb);
+      label.append(" " + name);
+      menu.appendChild(label);
+    }
+  }
+  addSection("ConfigMaps", "configmap", configMaps);
+  addSection("Secrets",    "secret",    secrets);
+
+  showAllBtn.addEventListener("click", () => {
+    menu.querySelectorAll("input[type=checkbox][data-resource]").forEach(cb => cb.checked = true);
+    applyResourceVisibility(menu);
+  });
+  hideAllBtn.addEventListener("click", () => {
+    menu.querySelectorAll("input[type=checkbox][data-resource]").forEach(cb => cb.checked = false);
+    applyResourceVisibility(menu);
+  });
+
+  btn.hidden = false;
+  btn.onclick = (e) => { e.stopPropagation(); menu.hidden = !menu.hidden; };
+  document.addEventListener("click", (e) => {
+    if (!menu.contains(e.target) && e.target !== btn) menu.hidden = true;
+  });
+
+  applyResourceVisibility(menu);
+}
+
 // ---------- in-page interactivity (filter, tabs, theme, sticky offsets) ----------
 
 function setUpInteractivity() {
@@ -2062,6 +2210,7 @@ async function renderFromFiles(fileList) {
   downloadBtn.hidden = false;
 
   buildEnvPicker(projects);
+  buildResourcePicker(projects);
   interactivity.recomputeOffsets();
   // Honour ?#<section>-<project> on first render.
   const m = location.hash.match(/^#(\w+)-(.+)$/);
@@ -2104,6 +2253,34 @@ function exportableHtml(projects, bodyHtml) {
              ` ${hesc(env)}${isRef ? '<span class="env-tag">reference</span>' : ""}</label>`;
     }).join("");
 
+  // Build the resource (configmap/secret) picker menu inline. Same data
+  // collection logic as buildResourcePicker(), inlined for export.
+  const cmSet = new Set(), secSet = new Set();
+  for (const p of projects) for (const o of p.overlays) {
+    for (const k of Object.keys(o.configMaps || {})) if (!isExcludedResource(k)) cmSet.add(k);
+    for (const k of Object.keys(o.secrets    || {})) if (!isExcludedResource(k)) secSet.add(k);
+  }
+  const cmList  = [...cmSet].sort();
+  const secList = [...secSet].sort();
+  const totalResources = cmList.length + secList.length;
+  function resourceLabel(name, kind) {
+    return `<label><input type="checkbox" data-resource="${hesc(name)}" data-resource-kind="${kind}" checked> ${hesc(name)}</label>`;
+  }
+  const resourceMenuHtml = totalResources ? (
+    `<div class="env-picker-actions">` +
+    `<button type="button" id="resource-show-all">Show all</button>` +
+    `<button type="button" id="resource-hide-all">Hide all</button>` +
+    `</div>` +
+    (cmList.length
+      ? `<div class="picker-section-header">ConfigMaps<span class="picker-section-count">${cmList.length}</span></div>` +
+        cmList.map(n => resourceLabel(n, "configmap")).join("")
+      : "") +
+    (secList.length
+      ? `<div class="picker-section-header">Secrets<span class="picker-section-count">${secList.length}</span></div>` +
+        secList.map(n => resourceLabel(n, "secret")).join("")
+      : "")
+  ) : "";
+
   const headerHtml = `
 <header class="topbar">
   <div class="brand">
@@ -2119,7 +2296,11 @@ function exportableHtml(projects, bodyHtml) {
     <div class="env-picker">
       <button id="env-picker-btn" type="button">Envs (${orderedEnvs.length}/${orderedEnvs.length}) ▾</button>
       <div class="env-picker-menu" id="env-picker-menu" hidden>${envMenuHtml}</div>
-    </div>
+    </div>${totalResources ? `
+    <div class="env-picker resource-picker">
+      <button id="resource-picker-btn" type="button">Resources (${totalResources}/${totalResources}) ▾</button>
+      <div class="env-picker-menu resource-picker-menu" id="resource-picker-menu" hidden>${resourceMenuHtml}</div>
+    </div>` : ""}
     <button id="expand-all" type="button">Expand all</button>
     <button id="collapse-all" type="button">Collapse all</button>
     <button id="theme-toggle" type="button">☾ Dark</button>
@@ -2191,6 +2372,25 @@ function exportableHtml(projects, bodyHtml) {
     document.getElementById('env-show-all').addEventListener('click',()=>{envMenu.querySelectorAll('input[type=checkbox][data-env]:not(:disabled)').forEach(cb=>cb.checked=true);applyEnvVis();});
     document.getElementById('env-hide-all').addEventListener('click',()=>{envMenu.querySelectorAll('input[type=checkbox][data-env]:not(:disabled)').forEach(cb=>cb.checked=false);applyEnvVis();});
     applyEnvVis();
+  }
+  // Resource (configmap/secret) visibility picker.
+  const resBtn=document.getElementById('resource-picker-btn'),resMenu=document.getElementById('resource-picker-menu');
+  function applyResVis(){
+    let st=document.getElementById('resource-overrides');
+    if(!st){st=document.createElement('style');st.id='resource-overrides';document.head.appendChild(st);}
+    const hidden=[...resMenu.querySelectorAll('input[type=checkbox][data-resource]')].filter(cb=>!cb.checked).map(cb=>({n:cb.dataset.resource,k:cb.dataset.resourceKind}));
+    st.textContent=hidden.length?hidden.map(h=>'[data-resource="'+cssEsc(h.n)+'"][data-resource-kind="'+h.k+'"]').join(',')+' { display: none; }':'';
+    const total=resMenu.querySelectorAll('input[type=checkbox][data-resource]').length;
+    resBtn.textContent='Resources ('+(total-hidden.length)+'/'+total+') ▾';
+  }
+  if(resBtn&&resMenu){
+    resBtn.addEventListener('click',e=>{e.stopPropagation();resMenu.hidden=!resMenu.hidden;});
+    document.addEventListener('click',e=>{if(!resMenu.contains(e.target)&&e.target!==resBtn)resMenu.hidden=true;});
+    resMenu.querySelectorAll('input[type=checkbox][data-resource]').forEach(cb=>cb.addEventListener('change',applyResVis));
+    const sa=document.getElementById('resource-show-all'),ha=document.getElementById('resource-hide-all');
+    if(sa)sa.addEventListener('click',()=>{resMenu.querySelectorAll('input[type=checkbox][data-resource]').forEach(cb=>cb.checked=true);applyResVis();});
+    if(ha)ha.addEventListener('click',()=>{resMenu.querySelectorAll('input[type=checkbox][data-resource]').forEach(cb=>cb.checked=false);applyResVis();});
+    applyResVis();
   }
   const m=location.hash.match(/^#(\\w+)-(.+)$/);setActive(m?m[2]:null);applyFilter();recomputeOffsets();requestAnimationFrame(recomputeOffsets);
 })();`;
