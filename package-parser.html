@@ -715,7 +715,7 @@ function handleFiles(files){
     r.onload=e=>{
       try{
         const raw=JSON.parse(e.target.result);
-        const pkg=raw.package||raw;
+        const pkg=(raw.data&&raw.data.package)||raw.package||raw;
         const name=pkg.name||pkg.label||f.name.replace('.json','');
         loadedPkgs[name]=parsePackage(pkg,name);
         renderChips();
